@@ -6,12 +6,34 @@ from colorama import init, Back, Fore
 
 init(autoreset=True)
 
-class Entity:
-    def __init__(self, x: int, y: int, char: str, color: str):
+#----------------------------------------------------------------------------
+#----------------------------Base Classes------------------------------------
+
+class Person:
+    def __init__(self, x, y, char, color): 
         self.x = x
         self.y = y
         self.char = char
         self.color = color
+
+
+
+class Hero(Person):
+    def __init__(self, x, y, max_health, current_health):
+        super().__init__(x, y, '@', Fore.RED)
+        self.max_health = max_health
+        self.current_health = current_health
+        self.max_health = max_health
+        self.current_health = current_health
+
+
+class Enemy(Person):
+    def __init__(self, x, y, max_health, current_health):
+        super().__init__(x, y, 'E', Fore.GREEN)
+
+
+#----------------------------------------------------------------------------
+#----------------------------Генерация карты------------------------------------
 
 class Map:
     def __init__(self, width: int, height: int, max_rooms: int = 7):
@@ -20,7 +42,7 @@ class Map:
         self.max_rooms = max_rooms
         self.rooms = []
         self.tiles = self._generate_tiles()
-        self.player = Entity(0, 0, '@', Fore.RED)
+        self.player = Hero(0, 0, 100, 100)  # Создаем игрока как объект класса Hero
         self._place_player()
 
     def _generate_tiles(self) -> List[List[str]]:
@@ -121,6 +143,9 @@ class Map:
             self.player.x = new_x
             self.player.y = new_y
 
+#----------------------------------------------------------------------------
+#----------------------------Запуск основного кода---------------------------
+
 def get_key():
     """Функция для получения нажатой клавиши без Enter"""
     while True:
@@ -128,6 +153,7 @@ def get_key():
             key = msvcrt.getch().decode('utf-8').lower()
             if key in ['w', 'a', 's', 'd', 'q']:
                 return key
+
 
 def main():
     game_map = Map(40, 20)
