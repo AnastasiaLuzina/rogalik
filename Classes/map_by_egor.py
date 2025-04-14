@@ -18,17 +18,21 @@ class Person:
 
 
 class Hero(Person):
-    def __init__(self, x, y, max_health, current_health):
+    def __init__(self, x, y, max_health, current_health,nventory=None, active_slot=None):
         super().__init__(x, y, '@', Fore.RED)
         self.max_health = max_health
         self.current_health = current_health
         self.max_health = max_health
         self.current_health = current_health
+        self.inventory = inventory if inventory is not None else Inventory(10)
+        self.active_slot = active_slot
 
 
 class Enemy(Person):
     def __init__(self, x, y, max_health, current_health):
         super().__init__(x, y, 'E', Fore.GREEN)
+        self.damage = damage
+
 
 
 #----------------------------------------------------------------------------
