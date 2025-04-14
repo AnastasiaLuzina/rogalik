@@ -381,6 +381,27 @@ def get_key():
                 # Игнорируем символы, которые не могут быть декодированы
                 continue
 
+
+""" sword = Sword(title="Меч", damage=20, symbol="⚔️")
+bow = Bow(title="Лук", damage=15, symbol="🏹", range=5)
+ice_staff = IceStaff(title="Ледяной посох", damage=25, symbol="❄️", range=3)
+shield = Shield(title="Щит", save_from_damage=10, symbol="🛡️")
+health_potion = HealthPotion(title="Зелье здоровья", heal_amount=30, symbol="❤️")
+poison_potion = PoisonPotion(title="Ядовитое зелье", damage_per_turn=5, symbol="🧪", duration=3)
+
+
+inventory = Inventory(count_of_slots=10)
+inventory.add_item(sword)
+
+
+hero_position = Position(3, 5)
+hero = Hero(health=100, symbol="@", position=hero_position, inventory=inventory, active_slot=sword)
+
+
+undead = Undead(health=40, symbol="💀", position=Position(1, 1), damage=10)
+ghost = Ghost(health=50, symbol="👻", position=Position(2, 2), damage=15)
+dark_mage = DarkMage(health=80, symbol="🧙", position=Position(3, 3), damage=15) """
+
 def main():
     game_map = Map(40, 20)
     
