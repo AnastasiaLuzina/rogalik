@@ -18,7 +18,7 @@ class Person:
 
 
 class Hero(Person):
-    def __init__(self, x, y, max_health, current_health,nventory=None, active_slot=None):
+    def __init__(self, x, y, max_health, current_health, inventory=None, active_slot=None):
         super().__init__(x, y, '@', Fore.RED)
         self.max_health = max_health
         self.current_health = current_health
@@ -29,10 +29,9 @@ class Hero(Person):
 
 
 class Enemy(Person):
-    def __init__(self, x, y, max_health, current_health):
+    def __init__(self, x, y, max_health, current_health, damage):
         super().__init__(x, y, 'E', Fore.GREEN)
         self.damage = damage
-
 
 
 #----------------------------------------------------------------------------
@@ -64,12 +63,12 @@ class DarkMage(Enemy):
         self.spell_cooldown = 0
 
 
-        def cast_spell(self):
-            if self.spell_cooldown > 0:
-                self.spell_cooldown -= 1
-                return 0
-            self.spell_cooldown = 3
-            return self.spell_damage
+    def cast_spell(self):
+        if self.spell_cooldown > 0:
+            self.spell_cooldown -= 1
+            return 0
+        self.spell_cooldown = 3
+        return self.spell_damage
 
 #----------------------------------------------------------------------------
 #------------------------------Инвентарь-------------------------------------
