@@ -322,15 +322,15 @@ class HealthPanel:
         
     def render(self) -> List[List[str]]:
         panel = []
-        panel.append(['#' * self.width])
-        panel.append(['#' + ' HEALTH '.center(self.width-2) + '#'])
-        panel.append(['#' + f"{self.player.current_health}/{self.player.max_health}".center(self.width-2) + '#'])
-        panel.append(['#' * self.width])
+        panel.append(['#' + ' HEALTH '.center(self.width) + '#'])
+        panel.append(['#' + f"{self.player.current_health}/{self.player.max_health}".center(self.width) + '#'])
+        for _ in range(self.height-2):
+            panel.append(['#' + ' ' * self.width + '#'])
         return panel
+
 
 #----------------------------------------------------------------------------
 #----------------------------Отрисовка карты----------------------------------
-
 
 class InteractionFrame:
     def __init__(self, width: int, height: int):
@@ -339,10 +339,9 @@ class InteractionFrame:
         
     def render(self) -> List[List[str]]:
         frame = []
-        frame.append(['#' * self.width])
-        for _ in range(self.height-2):
-            frame.append(['#' + ' '*(self.width-2) + '#'])
-        frame.append(['#' * self.width])
+        frame.append(['#' + ' INTERACTION '.center(self.width) + '#'])
+        for _ in range(self.height-1):
+            frame.append(['#' + ' ' * self.width + '#'])
         return frame
 #----------------------------------------------------------------------------
 #----------------------------Отрисовка карты----------------------------------
@@ -368,40 +367,46 @@ class MapRenderer:
             map_display.append(row)
 
         # Панели
-        health_panel = HealthPanel(self.player, self.panel_width, 5).render()
-        interaction_frame = InteractionFrame(self.panel_width, 5).render()
+        health_panel = HealthPanel(self.player, self.panel_width, self.map_height//2).render()
+        interaction_frame = InteractionFrame(self.panel_width, self.map_height//2).render()
 
         # Объединяем все компоненты
         full_display = []
         for y in range(self.map_height):
             line = []
-            # Карта
+            # Карта с левой границей
+            line.append('#')
             line += map_display[y]
             
-            # Вертикальный разделитель
-            line.append(Back.LIGHTBLACK_EX + '#')
+            # Правая граница карты
+            line.append('#')
             
-            # Панель здоровья (первые 5 строк)
+            # Правая панель
             if y < len(health_panel):
                 line += health_panel[y]
+            elif y - len(health_panel) < len(interaction_frame):
+                line += interaction_frame[y - len(health_panel)]
             else:
                 line.append(' ' * self.panel_width)
             
-            # Вертикальный разделитель
-            line.append(Back.LIGHTBLACK_EX + '#')
-            
-            # Рамка взаимодействия (следующие 5 строк)
-            if y < len(interaction_frame):
-                line += interaction_frame[y]
-            else:
-                line.append(' ' * self.panel_width)
+            # Правая граница
+            line.append('#')
             
             full_display.append(''.join(line))
 
+        # Добавляем горизонтальные разделители
+        full_display.insert(0, '#' * (self.map_width + self.panel_width + 3))  # Верхняя граница
+
+        # Разделитель только для правой панели (не затрагивает карту)
+        panel_separator = '#' + ' ' * (self.map_width) + ' #' + '-' * (self.panel_width - 2) + '#'
+        full_display.insert(len(health_panel) + 1, panel_separator)
+
+        full_display.append('#' * (self.map_width + self.panel_width + 3))
         # Отрисовка
         print("\033[H\033[J")  # Очистка терминала
         print('\n'.join(full_display))
         print("WASD - движение, Q - выход (без Enter)")
+
 #----------------------------------------------------------------------------
 #----------------------------Основной класс Map-------------------------------
 
@@ -410,22 +415,21 @@ class Map:
         self.width = width
         self.height = height
         self.max_rooms = max_rooms
-
+        
         # Генерация карты
         self.room_generator = RoomGenerator(width, height, max_rooms)
         self.tiles, self.rooms = self.room_generator.generate_tiles()
-
+        
         # Игрок
         self.player = Hero(0, 0, 100, 100)
         self.player_manager = PlayerManager(self.player, width, height)
         self.player_manager.place_player(self.rooms)
-
+        
         # Отрисовка
         self.renderer = MapRenderer(
             map_width=width,
             map_height=height,
             panel_width=20,
-            total_height=25,
             player=self.player
         )
 
