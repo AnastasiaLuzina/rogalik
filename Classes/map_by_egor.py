@@ -311,36 +311,97 @@ class PlayerManager:
             self.player.x = new_x
             self.player.y = new_y
 
+#----------------------------------------------------------------------------
+#----------------------------Отрисовка карты----------------------------------
+
+class HealthPanel:
+    def __init__(self, player: Hero, width: int, height: int):
+        self.player = player
+        self.width = width
+        self.height = height
+        
+    def render(self) -> List[List[str]]:
+        panel = []
+        panel.append(['#' * self.width])
+        panel.append(['#' + ' HEALTH '.center(self.width-2) + '#'])
+        panel.append(['#' + f"{self.player.current_health}/{self.player.max_health}".center(self.width-2) + '#'])
+        panel.append(['#' * self.width])
+        return panel
 
 #----------------------------------------------------------------------------
 #----------------------------Отрисовка карты----------------------------------
 
-class MapRenderer:
+
+class InteractionFrame:
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
+        
+    def render(self) -> List[List[str]]:
+        frame = []
+        frame.append(['#' * self.width])
+        for _ in range(self.height-2):
+            frame.append(['#' + ' '*(self.width-2) + '#'])
+        frame.append(['#' * self.width])
+        return frame
+#----------------------------------------------------------------------------
+#----------------------------Отрисовка карты----------------------------------
 
-    def render(self, tiles: List[List[str]], player):
-        display = []
-        for y in range(self.height):
+class MapRenderer:
+    def __init__(self, map_width: int, map_height: int, panel_width: int, player: Hero):
+        self.map_width = map_width
+        self.map_height = map_height
+        self.panel_width = panel_width
+        self.player = player
+        
+    def render(self, tiles: List[List[str]]):
+        # Основная карта
+        map_display = []
+        for y in range(self.map_height):
             row = []
-            for x in range(self.width):
-                if Back.BLACK in tiles[y][x]:
-                    row.append(Back.BLACK + ' ')
+            for x in range(self.map_width):
+                if x == self.player.x and y == self.player.y:
+                    bg = Back.BLACK if Back.BLACK in tiles[y][x] else Back.WHITE
+                    row.append(bg + self.player.color + self.player.char)
                 else:
-                    row.append(Back.WHITE + ' ')
-            display.append(row)
+                    row.append(tiles[y][x])
+            map_display.append(row)
 
-        if 0 <= player.y < self.height and 0 <= player.x < self.width:
-            bg = Back.BLACK if Back.BLACK in tiles[player.y][player.x] else Back.WHITE
-            display[player.y][player.x] = bg + player.color + player.char
+        # Панели
+        health_panel = HealthPanel(self.player, self.panel_width, 5).render()
+        interaction_frame = InteractionFrame(self.panel_width, 5).render()
 
+        # Объединяем все компоненты
+        full_display = []
+        for y in range(self.map_height):
+            line = []
+            # Карта
+            line += map_display[y]
+            
+            # Вертикальный разделитель
+            line.append(Back.LIGHTBLACK_EX + '#')
+            
+            # Панель здоровья (первые 5 строк)
+            if y < len(health_panel):
+                line += health_panel[y]
+            else:
+                line.append(' ' * self.panel_width)
+            
+            # Вертикальный разделитель
+            line.append(Back.LIGHTBLACK_EX + '#')
+            
+            # Рамка взаимодействия (следующие 5 строк)
+            if y < len(interaction_frame):
+                line += interaction_frame[y]
+            else:
+                line.append(' ' * self.panel_width)
+            
+            full_display.append(''.join(line))
+
+        # Отрисовка
         print("\033[H\033[J")  # Очистка терминала
-        for row in display:
-            print(''.join(row))
+        print('\n'.join(full_display))
         print("WASD - движение, Q - выход (без Enter)")
-        print(" <- -> - переключаться между сломами)")
-
 #----------------------------------------------------------------------------
 #----------------------------Основной класс Map-------------------------------
 
@@ -360,10 +421,16 @@ class Map:
         self.player_manager.place_player(self.rooms)
 
         # Отрисовка
-        self.renderer = MapRenderer(width, height)
+        self.renderer = MapRenderer(
+            map_width=width,
+            map_height=height,
+            panel_width=20,
+            total_height=25,
+            player=self.player
+        )
 
     def render(self):
-        self.renderer.render(self.tiles, self.player)
+        self.renderer.render(self.tiles)
 
     def move_player(self, dx: int, dy: int):
         self.player_manager.move_player(dx, dy, self.tiles)
@@ -376,34 +443,15 @@ def get_key():
     while True:
         if msvcrt.kbhit():
             try:
-                # Исправление: Добавлена обработка возможных ошибок декодирования
+
                 key = msvcrt.getch().decode('utf-8', errors='ignore').lower()
                 if key in ['w', 'a', 's', 'd', 'q']:
                     return key
             except UnicodeDecodeError:
-                # Игнорируем символы, которые не могут быть декодированы
+                
                 continue
 
 
-""" sword = Sword(title="Меч", damage=20, symbol="⚔️")
-bow = Bow(title="Лук", damage=15, symbol="🏹", range=5)
-ice_staff = IceStaff(title="Ледяной посох", damage=25, symbol="❄️", range=3)
-shield = Shield(title="Щит", save_from_damage=10, symbol="🛡️")
-health_potion = HealthPotion(title="Зелье здоровья", heal_amount=30, symbol="❤️")
-poison_potion = PoisonPotion(title="Ядовитое зелье", damage_per_turn=5, symbol="🧪", duration=3)
-
-
-inventory = Inventory(count_of_slots=10)
-inventory.add_item(sword)
-
-
-hero_position = Position(3, 5)
-hero = Hero(health=100, symbol="@", position=hero_position, inventory=inventory, active_slot=sword)
-
-
-undead = Undead(health=40, symbol="💀", position=Position(1, 1), damage=10)
-ghost = Ghost(health=50, symbol="👻", position=Position(2, 2), damage=15)
-dark_mage = DarkMage(health=80, symbol="🧙", position=Position(3, 3), damage=15) """
 
 def main():
     game_map = Map(40, 20)
