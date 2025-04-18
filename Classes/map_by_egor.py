@@ -8,6 +8,11 @@ init(autoreset=True)
 # Размеры карты
 MAP_WIDTH, MAP_HEIGHT = 80, 30
 
+# Размеры панелей
+PANEL_WIDTH = 20
+HEALTH_HEIGHT = 5
+INTERACTION_HEIGHT = 20
+
 class Map:
     def __init__(self, width: int, height: int, max_rooms: int = 12, 
                  wall_char: str = '▓', empty_char: str = ' '):
@@ -19,8 +24,6 @@ class Map:
         self.rooms: List[Dict] = []
         self.walkable: Set[Tuple[int, int]] = set()
         self.tiles = self._generate_map()
-        self._init_screen()  # Очищаем экран, но не отрисовываем
-        # Убрали self._render_all(), чтобы не отрисовывать карту автоматически
 
     def _generate_map(self) -> List[List[str]]:
         tiles = [[self.wall_char for _ in range(self.width)] 
@@ -38,14 +41,19 @@ class Map:
         
         self._connect_all_rooms(tiles)
         return tiles
-
+        
     def _generate_room(self) -> Dict:
         w, h = random.randint(5, 12), random.randint(4, 8)
-        x, y = random.randint(1, self.width-w-2), random.randint(1, self.height-h-2)
+        x = random.randint(1, self.width - w - 2)
+        y = random.randint(1, self.height - h - 2)
+        x = max(1, min(x, self.width - w - 2))
+        y = max(1, min(y, self.height - h - 2))
         return {
-            'x1':x, 'y1':y, 'x2':x+w-1, 'y2':y+h-1, 
-            'tiles':set(),
-            'connections':0
+            'x1': x, 'y1': y, 
+            'x2': x + w - 1, 
+            'y2': y + h - 1, 
+            'tiles': set(),
+            'connections': 0
         }
 
     def _rooms_intersect(self, room: Dict) -> bool:
@@ -185,22 +193,105 @@ class Map:
                 tiles[y][x] = self.empty_char
                 self.walkable.add((x, y))
 
-    def _init_screen(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-
-    def _render_all(self):
+    def render(self, hero=None, enemies=[], items=[]):
         for y in range(self.height):
+            line = []
             for x in range(self.width):
-                self._draw_cell(x, y)
+                cell_content = self.empty_char  # Один символ
+                # Стены
+                if self.tiles[y][x] == self.wall_char:
+                    cell_content = f"{Fore.BLACK}{self.wall_char}"
+                # Герой
+                if hero and x == hero.x and y == hero.y:
+                    cell_content = f"{hero.color}{hero.char}"
+                # Предметы
+                for item_x, item_y, item in items:
+                    if item_x == x and item_y == y:
+                        cell_content = f"{Fore.GREEN}{item.symbol}"
+                # Враги
+                for enemy in enemies:
+                    if enemy.x == x and enemy.y == y and enemy.current_health > 0:
+                        cell_content = f"{enemy.color}{enemy.char}"
+                line.append(cell_content)
+            # Добавляем правую границу карты
+            line.append(Fore.BLACK + self.wall_char)  # <-- Добавлено
+            print(''.join(line))
+            
+class HealthPanel:
+    def __init__(self, x: int, y: int, width: int, height: int, 
+                 current_hp: int, max_hp: int):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.current_hp = current_hp
+        self.max_hp = max_hp
 
-    def _draw_cell(self, x: int, y: int):
-        cell = self.tiles[y][x]
-        if cell == self.wall_char:  # Используем атрибут класса
-            print(f"\033[{y+1};{x+1}H" + Fore.BLACK + cell, end='', flush=True)
-        else:
-            print(f"\033[{y+1};{x+1}H" + self.empty_char, end='', flush=True)
+    def render(self):
+        # Отрисовка рамки
+        print(f"\033[{self.y+1};{self.x+1}H╔{'═'*(self.width-2)}╗")
+        for dy in range(1, self.height-1):
+            print(f"\033[{self.y+1+dy};{self.x+1}H║{' '*(self.width-2)}║")
+        print(f"\033[{self.y+self.height};{self.x+1}H╚{'═'*(self.width-2)}╝")
+        
+        # Текст здоровья
+        hp_text = f"HP: {self.current_hp}/{self.max_hp}"
+        hp_percent = self.current_hp / self.max_hp
+        bar_width = self.width - 4
+        filled = int(bar_width * hp_percent)
+        health_bar = f"{Fore.RED}{'█'*filled}{Fore.WHITE}{'░'*(bar_width-filled)}"
+        
+        # Центрируем текст и прогресс-бар
+        print(f"\033[{self.y+2};{self.x+2}H{hp_text.center(self.width-2)}")
+        print(f"\033[{self.y+3};{self.x+2}H{health_bar}")
+
+
+class InteractionPanel:
+    def __init__(self, x: int, y: int, width: int, height: int):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.messages = []
+
+    def add_message(self, message: str):
+        self.messages.append(message)
+        if len(self.messages) > self.height - 2:
+            self.messages.pop(0)
+
+    def render(self):
+        # Отрисовка рамки
+        print(f"\033[{self.y+1};{self.x+1}H╔{'═'*(self.width-2)}╗")
+        for dy in range(1, self.height-1):
+            print(f"\033[{self.y+1+dy};{self.x+1}H║{' '*(self.width-2)}║")
+        print(f"\033[{self.y+self.height};{self.x+1}H╚{'═'*(self.width-2)}╝")
+        
+        # Отображение сообщений
+        for i, msg in enumerate(self.messages):
+            print(f"\033[{self.y+1+i};{self.x+2}H{msg[:self.width-2]}")
 
 if __name__ == "__main__":
-    os.system('mode con: cols={} lines={}'.format(MAP_WIDTH+2, MAP_HEIGHT+3))
+    # Установка размера консоли
+    os.system(f'mode con: cols={MAP_WIDTH + PANEL_WIDTH} lines={MAP_HEIGHT + 3}')
+    os.system('cls')  # Очистка экрана
+
+    # Инициализация и отрисовка карты
     map_instance = Map(MAP_WIDTH, MAP_HEIGHT, max_rooms=12)
-    map_instance._render_all()  # Отрисовываем карту при запуске модуля напрямую
+    map_instance.render()
+
+    # Отрисовка панелей
+    health_panel = HealthPanel(
+        x=MAP_WIDTH + 1, y=1, 
+        width=PANEL_WIDTH, height=HEALTH_HEIGHT,
+        current_hp=85, max_hp=100
+    )
+    health_panel.render()
+
+    interaction_panel = InteractionPanel(
+        x=MAP_WIDTH + 1, y=HEALTH_HEIGHT + 1,
+        width=PANEL_WIDTH, height=INTERACTION_HEIGHT
+    )
+    interaction_panel.add_message("Добро пожаловать!")
+    interaction_panel.add_message("Используйте WASD для движения.")
+    interaction_panel.add_message("Нажмите Q для выхода.")
+    interaction_panel.render()
