@@ -26,7 +26,7 @@ class Enemy(Person):
 
 class Undead(Enemy):
     def __init__(self, x: int, y: int):
-        super().__init__(x, y, '💀', Fore.RED, max_health=50, damage=8) 
+        super().__init__(x, y, '▣', Fore.RED, max_health=50, damage=8) 
         self.can_resurrect = True
 
     def resurrect(self):
@@ -39,11 +39,11 @@ class Undead(Enemy):
 
 class Ghost(Enemy):
     def __init__(self, x: int, y: int):
-        super().__init__(x, y, '👻', Fore.RED, max_health=30, damage=5)  
+        super().__init__(x, y, '▣', Fore.RED, max_health=30, damage=5)  
         self.is_phased = True
 
 class DarkMage(Enemy):
     def __init__(self, x: int, y: int):
-        super().__init__(x, y, '🧙', Fore.RED, max_health=40, damage=6)  
+        super().__init__(x, y, '▣', Fore.RED, max_health=40, damage=6)  
         self.spell_cooldown = 0
         self.spell_damage = 15

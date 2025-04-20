@@ -1,4 +1,5 @@
 import random
+import re
 import os
 from typing import List, Dict, Set, Tuple
 from colorama import init, Fore
@@ -10,8 +11,8 @@ MAP_WIDTH, MAP_HEIGHT = 80, 30
 
 # Размеры панелей
 PANEL_WIDTH = 20
-HEALTH_HEIGHT = 5
-INTERACTION_HEIGHT = 20
+HEALTH_HEIGHT = 7
+INTERACTION_HEIGHT = MAP_HEIGHT - HEALTH_HEIGHT - 1
 
 class Map:
     def __init__(self, width: int, height: int, max_rooms: int = 12, 
@@ -213,10 +214,14 @@ class Map:
                     if enemy.x == x and enemy.y == y and enemy.current_health > 0:
                         cell_content = f"{enemy.color}{enemy.char}"
                 line.append(cell_content)
-            # Добавляем правую границу карты
-            line.append(Fore.BLACK + self.wall_char)  # <-- Добавлено
             print(''.join(line))
-            
+        
+        # Добавляем кнопку "Инвентарь" под картой
+        inventory_button = Fore.CYAN + "[I] Инвентарь"
+        print(f"\033[{self.height+1};1H{inventory_button}")
+
+    
+
 class HealthPanel:
     def __init__(self, x: int, y: int, width: int, height: int, 
                  current_hp: int, max_hp: int):
@@ -245,7 +250,6 @@ class HealthPanel:
         print(f"\033[{self.y+2};{self.x+2}H{hp_text.center(self.width-2)}")
         print(f"\033[{self.y+3};{self.x+2}H{health_bar}")
 
-
 class InteractionPanel:
     def __init__(self, x: int, y: int, width: int, height: int):
         self.x = x
@@ -255,9 +259,37 @@ class InteractionPanel:
         self.messages = []
 
     def add_message(self, message: str):
-        self.messages.append(message)
-        if len(self.messages) > self.height - 2:
-            self.messages.pop(0)
+            # Удаляем цветовые коды для проверки длины
+            raw_message = re.sub(r'\x1b\[[0-9;]*m', '', message)
+            max_length = self.width - 2  # Ширина панели минус границы
+            if len(raw_message) > max_length:
+                # Обрезаем сообщение и сохраняем цвет
+                color_code = re.search(r'\x1b\[[0-9;]*m', message)
+                color = color_code.group() if color_code else ''
+                trimmed = raw_message[:max_length-3] + '...'
+                message = f"{color}{trimmed}"
+            self.messages.append(message)
+            if len(self.messages) > self.height - 2:
+                self.messages.pop(0)
+
+    def show_inventory(self, items: list, selected: int):
+        """Отображает интерфейс выбора предметов"""
+        self.messages = []  # Очищаем предыдущие сообщения
+        
+        # Формируем строки для кнопок
+        for i, item in enumerate(items):
+            button = f"[{i+1}] {item.title}"
+            if i == selected:
+                button = Fore.YELLOW + "> " + button + Fore.RESET
+            else:
+                button = "  " + button
+            self.add_message(button)
+        
+        # Добавляем инструкцию
+        self.add_message("")
+        self.add_message("↑/↓ - выбрать, Enter - подтвердить")
+        
+        self.render()
 
     def render(self):
         # Отрисовка рамки
@@ -266,13 +298,13 @@ class InteractionPanel:
             print(f"\033[{self.y+1+dy};{self.x+1}H║{' '*(self.width-2)}║")
         print(f"\033[{self.y+self.height};{self.x+1}H╚{'═'*(self.width-2)}╝")
         
-        # Отображение сообщений
+        # Отображение сообщений (исправлено смещение)
         for i, msg in enumerate(self.messages):
-            print(f"\033[{self.y+1+i};{self.x+2}H{msg[:self.width-2]}")
+            print(f"\033[{self.y+2+i};{self.x+2}H{msg[:self.width-2]}")  # Изменено y+2+i
 
 if __name__ == "__main__":
     # Установка размера консоли
-    os.system(f'mode con: cols={MAP_WIDTH + PANEL_WIDTH} lines={MAP_HEIGHT + 3}')
+    os.system(f'mode con: cols={MAP_WIDTH + 1 + PANEL_WIDTH} lines={MAP_HEIGHT + 3}')
     os.system('cls')  # Очистка экрана
 
     # Инициализация и отрисовка карты
@@ -281,15 +313,19 @@ if __name__ == "__main__":
 
     # Отрисовка панелей
     health_panel = HealthPanel(
-        x=MAP_WIDTH + 1, y=1, 
-        width=PANEL_WIDTH, height=HEALTH_HEIGHT,
+        x=1,               # Начинается с левого края
+        y=MAP_HEIGHT + 1,  # Под картой
+        width=MAP_WIDTH,   # Использует ширину карты
+        height=HEALTH_HEIGHT,
         current_hp=85, max_hp=100
     )
     health_panel.render()
 
     interaction_panel = InteractionPanel(
-        x=MAP_WIDTH + 1, y=HEALTH_HEIGHT + 1,
-        width=PANEL_WIDTH, height=INTERACTION_HEIGHT
+        x=MAP_WIDTH + 1, 
+        y=HEALTH_HEIGHT + 1,
+        width=PANEL_WIDTH, 
+        height=INTERACTION_HEIGHT
     )
     interaction_panel.add_message("Добро пожаловать!")
     interaction_panel.add_message("Используйте WASD для движения.")

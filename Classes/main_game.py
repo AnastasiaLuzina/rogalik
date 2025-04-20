@@ -25,13 +25,33 @@ init(autoreset=True)
 class Game:
     def __init__(self):
         self.map = Map(MAP_WIDTH, MAP_HEIGHT)
+
         self.hero = None
-        self.enemies = []
-        self.items = []
-        self.game_over = False
         self.last_hero_pos = (0, 0)
+
+        self.enemies = []
+
+        self.items = []
+
+        self.game_over = False
+
         self.messages = []
+
+        self.inventory_items = []  # Список предметов в инвентаре
+        self.inventory_open = False
+        self.selected_item = 0
+
+
+        #  дефолтный пример списка.
+        self.inventory_items = [
+            HealthPotion("Зелье здоровья", 30, '❤️'),
+            Sword("Меч", 20, '⚔️', 50),
+            Shield("Щит", 10, '🛡️', 20)
+        ]
+
         
+
+
         # Панели интерфейса
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
@@ -45,6 +65,8 @@ class Game:
         
         self._place_hero_and_entities()
         self._draw_initial_map()
+
+        
     def _place_hero_and_entities(self):
         hero_room = random.choice(self.map.rooms)
         hero_x = random.randint(hero_room['x1'], hero_room['x2'])
@@ -54,12 +76,12 @@ class Game:
 
         # Создаем список всех возможных предметов с количеством от 1 до 2
         item_templates = [
-            Sword("Меч", 20, '⚔️', 50),
-            Bow("Лук", 15, '🏹', 5, 30),
-            IceStaff("Ледяной посох", 25, '❄️', 3, 50),
-            Shield("Щит", 10, '🛡️', 20),
-            HealthPotion("Зелье здоровья", 30, '❤️'),
-            PoisonPotion("Ядовитое зелье", 5, '🧪', 3)
+            Sword("Меч", 20, '◻', 50),
+            Bow("Лук", 15, '◻', 5, 30),
+            IceStaff("Ледяной посох", 25, '◻', 3, 50),
+            Shield("Щит", 10, '◻', 20),
+            HealthPotion("Зелье здоровья", 30, '◻'),
+            PoisonPotion("Ядовитое зелье", 5, '◻', 3)
         ]
 
         # Для каждого типа предмета создаем от 1 до 2 экземпляров
@@ -103,7 +125,7 @@ class Game:
         os.system('cls' if os.name == 'nt' else 'clear')
         self.map.render(hero=self.hero, enemies=self.enemies, items=self.items)  # Используем обновленный render
         self._draw_panels()
-        self._display_hero_status()
+
 
 
     def _draw_map(self):
@@ -147,7 +169,7 @@ class Game:
         os.system('cls' if os.name == 'nt' else 'clear')
         self.map.render(hero=self.hero, enemies=self.enemies, items=self.items)
         self._draw_panels()
-        self._display_hero_status()
+    
 
     def _draw_cell(self, x, y):
         if (x, y) in [(item[0], item[1]) for item in self.items]:
@@ -164,11 +186,7 @@ class Game:
         else:
             print(f"\033[{y+1};{x+1}H" + '  ', end='', flush=True)
 
-    def _display_hero_status(self):
-        status_line = MAP_HEIGHT + 1
-        health_bar = f"HP: {self.hero.current_health}/{self.hero.max_health}"
-        print(f"\033[{status_line};1H" + Fore.RED + health_bar + " " + Fore.YELLOW + "Управление: WASD, Q-выход", end='', flush=True)
-        print("\033[K", end='')  # Очищаем строку от возможных предыдущих сообщений
+
 
     def _move_hero(self, dx, dy):
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
@@ -189,28 +207,38 @@ class Game:
     def _handle_combat(self, enemy):
         hero_damage = 10
         enemy.current_health -= hero_damage
-        self.messages.append(Fore.RED + f"Вы атаковали {enemy.char} (-{hero_damage} HP)")
-
+        
+        # Создаем базовое сообщение
+        base_msg = f"Вы атаковали {enemy.char} (-{hero_damage} HP)"
+        self.messages.append(Fore.RED + base_msg)
+        
         if enemy.current_health <= 0:
             self.messages.append(Fore.GREEN + f"{enemy.char} побежден!")
         else:
             damage_to_hero = enemy.damage
             self.hero.current_health -= damage_to_hero
             self.messages.append(Fore.RED + f"{enemy.char} атакует вас (-{damage_to_hero} HP)")
-
+        
         if self.hero.current_health <= 0:
             self.messages.append(Fore.RED + "ВЫ ПОГИБЛИ!")
             self.game_over = True
-
+        
         self._update_interface()
 
     def _update_interface(self):
         # Обновляем здоровье
+
         self.health_panel.current_hp = self.hero.current_health
         self.health_panel.render()
-
-        # Обновляем сообщения
-        self.interaction_panel.messages = self.messages[-5:]
+        
+        # Добавляем сообщения через InteractionPanel
+        for msg in self.messages[-5:]:
+            self.interaction_panel.add_message(msg)
+        
+        # Не очищаем self.messages здесь!
+        # Очистка будет происходить только при закрытии инвентаря
+        
+        # Отрисовываем интерфейс
         self.interaction_panel.render()
 
     def _get_key(self):
@@ -230,22 +258,77 @@ class Game:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return None
 
+    def _handle_key_press(self, key):
+
+        if self.inventory_open:
+            if key == 'w' or key == 'up':
+                self._select_item(-1)
+            elif key == 's' or key == 'down':
+                self._select_item(+1)
+            elif key == 'enter':
+                self._use_item()
+            return
+
+        elif key == 'q':
+            self.game_over = True
+        elif key in ('w', 'a', 's', 'd'):
+            self._move_hero(
+                dx=1 if key == 'd' else -1 if key == 'a' else 0,
+                dy=1 if key == 's' else -1 if key == 'w' else 0
+                )
+        elif key == 'i':  # Обработка нажатия "I"
+            self._toggle_inventory()
+
+    def _toggle_inventory(self):
+        """Переключает состояние инвентаря"""
+        if self.inventory_open:
+            self.inventory_open = False
+            self.interaction_panel.messages = []
+            self._update_interface()
+        else:
+            self.inventory_open = True
+            self._show_inventory()
+    
+    def _show_inventory(self):
+        """Отображает интерфейс инвентаря"""
+        self.interaction_panel.show_inventory(
+            items=self.inventory_items,
+            selected=self.selected_item
+        )
+    
+    def _select_item(self, direction: int):
+        """Переключает выбранный предмет (direction: +1 или -1)"""
+        if not self.inventory_open:
+            return
+        
+        self.selected_item = (self.selected_item + direction) % len(self.inventory_items)
+        self._show_inventory()
+    
+    def _use_item(self):
+        if not self.inventory_open or not self.inventory_items:
+            return
+        selected = self.inventory_items[self.selected_item]
+        self.inventory_open = False
+        self.messages.append(Fore.GREEN + f"Вы выбрали: {selected.title}")
+        self._update_display()  # Обновляем весь экран
+
+        
+        selected = self.inventory_items[self.selected_item]
+        self.inventory_open = False
+        self.messages.append(Fore.GREEN + f"Вы выбрали: {selected.title}")
+        self._update_interface()
+
     def run(self):
         while not self.game_over:
             key = self._get_key()
             if not key:
                 continue
-            if key == 'q':
-                break
-            elif key in ('w', 'a', 's', 'd'):
-                self._move_hero(
-                    dx=1 if key == 'd' else -1 if key == 'a' else 0,
-                    dy=1 if key == 's' else -1 if key == 'w' else 0
-                )
+            self._handle_key_press(key)  # Используем новый метод для обработки клавиш      
+
 
 if __name__ == "__main__":
     # Установка размера консоли
-    os.system(f'mode con: cols={MAP_WIDTH + PANEL_WIDTH} lines={MAP_HEIGHT + 5}')
+    os.system(f'mode con: cols={MAP_WIDTH + PANEL_WIDTH + 1} lines={MAP_HEIGHT + 5}')
     os.system('cls')  # Очистка экрана
     game = Game()
     game.run()
