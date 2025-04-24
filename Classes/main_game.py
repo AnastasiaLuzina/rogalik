@@ -48,12 +48,12 @@ class Game:
         self.hero = Hero(hero_x, hero_y)
 
         item_templates = [
-            Sword("Меч", 20, '◻', 50),
-            Bow("Лук", 15, '◻', 5, 30),
-            IceStaff("Ледяной посох", 25, '◻', 3, 50),
-            Shield("Щит", 10, '◻', 20),
-            HealthPotion("Зелье здоровья", 30, '◻'),
-            PoisonPotion("Ядовитое зелье", 5, '◻', 3)
+            Sword("Меч", 20, '/', 50),
+            Bow("Лук", 15, ')', 5, 30),
+            IceStaff("Ледяной посох", 25, '*', 3, 50),
+            Shield("Щит", 10, '0', 20),
+            HealthPotion("Зелье здоровья", 30, 'H'),
+            PoisonPotion("Ядовитое зелье", 5, 'P', 3)
         ]
 
         items_to_place = []

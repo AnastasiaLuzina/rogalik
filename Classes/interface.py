@@ -2,7 +2,7 @@ from map import MAP_WIDTH, MAP_HEIGHT
 import re
 import curses
 
-PANEL_WIDTH = 30
+PANEL_WIDTH = 35
 HEALTH_HEIGHT = 7
 INTERACTION_HEIGHT = MAP_HEIGHT - HEALTH_HEIGHT - 1
 
@@ -27,7 +27,7 @@ class HealthPanel:
         current_hp = max(0, min(self.current_hp, self.max_hp))  # Ограничиваем значение
         hp_text = f"HP: {current_hp}/{self.max_hp}"
         hp_percent = current_hp / self.max_hp
-        bar_width = self.width - 4
+        bar_width = self.width - 3
         filled = int(bar_width * hp_percent)
         health_bar = '█'*filled + '░'*(bar_width-filled)
         
