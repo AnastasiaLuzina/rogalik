@@ -7,15 +7,15 @@ class Renderer:
     def __init__(self):
         self.screen = None
         self.color_pairs = {}
-        self.last_positions = {}  # Для отслеживания изменений
+        self.last_positions = {} 
 
     def init_colors(self):
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)   # Стены
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)   # Герой
-        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     # Враги
-        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # Предметы
-        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    # Интерфейс
+        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)   
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)   
+        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     
+        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    
 
     def init_screen(self):
         self.screen = curses.initscr()
@@ -63,9 +63,10 @@ class Renderer:
                 if force_redraw or self.is_cell_changed(x, y, hero, enemies, items):
                     self.draw_cell(map, x, y, hero, enemies, items)
 
+        # Кнопка инвентаря и обновление экрана
         inventory_button = "[I] Инвентарь"
         self.screen.addstr(map.height, 0, inventory_button, curses.color_pair(5))
-        self.screen.refresh()
+        self.screen.refresh()  # Убедитесь, что отступы здесь правильные
 
     def draw_cell(self, map: Map, x: int, y: int, hero: Hero, enemies: list, items: list) -> None:
         if not self.screen:
@@ -86,4 +87,3 @@ class Renderer:
                 self.screen.addch(y, x, map.wall_char, curses.color_pair(1))
             else:
                 self.screen.addch(y, x, ord(' '))
-        self.screen.refresh()

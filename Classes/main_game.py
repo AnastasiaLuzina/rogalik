@@ -11,8 +11,25 @@ from combat import CombatSystem
 
 class Game:
     def __init__(self):
-        self.map = Map(MAP_WIDTH, MAP_HEIGHT)
+
         self.renderer = Renderer()
+
+        self.renderer.init_screen()  # Инициализируем экран curses
+
+
+        # Получаем размеры терминала
+        terminal_width = curses.COLS
+        terminal_height = curses.LINES
+        
+        if MAP_WIDTH > terminal_width or MAP_HEIGHT > terminal_height:
+            self.renderer.close_screen()
+            raise ValueError(
+                f"Терминал слишком мал. Требуется минимум {MAP_WIDTH}x{MAP_HEIGHT}. "
+                f"Текущий размер: {terminal_width}x{terminal_height}."
+            )
+
+        self.map = Map(MAP_WIDTH, MAP_HEIGHT)
+        
         self.hero = None
         self.enemies = []
         self.items = []
@@ -26,20 +43,25 @@ class Game:
         self.inventory_open = False
         self.selected_item = 0
 
+        curses.update_lines_cols()  # Обновляем размеры терминала
+        if MAP_WIDTH > curses.COLS or MAP_HEIGHT > curses.LINES:
+            raise ValueError("Размеры карты больше размеров терминала!")
+        
         # Панели интерфейса
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
             width=PANEL_WIDTH, height=HEALTH_HEIGHT,
             current_hp=100, max_hp=100
         )
+
         self.interaction_panel = InteractionPanel(
             x=MAP_WIDTH + 1, y=HEALTH_HEIGHT + 1,
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
         )
         
         self._place_hero_and_entities()
-        self.renderer.init_screen()  # Инициализируем экран curses
         self._draw_initial_map()
+
 
     def _place_hero_and_entities(self):
         hero_room = random.choice(self.map.rooms)
