@@ -8,6 +8,7 @@ from items import Sword, Bow, IceStaff, Shield, HealthPotion, PoisonPotion
 from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT
 from map_render import Renderer
 from combat import CombatSystem
+from vision import VisionSystem
 
 class Game:
     def __init__(self):
@@ -29,7 +30,7 @@ class Game:
             )
 
         self.map = Map(MAP_WIDTH, MAP_HEIGHT)
-        
+        self.vision_system = VisionSystem(vision_radius=5)  # Добавьте эту строку
         self.hero = None
         self.enemies = []
         self.items = []
@@ -112,16 +113,41 @@ class Game:
                     self.items.append((x, y, item))
 
     def _draw_initial_map(self):
-        self.renderer.render_map(self.map, self.hero, self.enemies, self.items)
+        # Initialize vision system and get visible entities
+        self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
+        visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
+        
+        # Render map with vision system
+        self.renderer.render_map(
+            self.map,
+            self.hero,
+            visible_entities['enemies'],
+            visible_entities['items'],
+            self.vision_system,
+            force_redraw=True  # Force redraw to ensure correct initial render
+        )
         self._draw_panels()
+        self.renderer.screen.refresh()
 
     def _draw_panels(self):
         self.health_panel.render(self.renderer.screen)
         self.interaction_panel.render(self.renderer.screen)
 
     def _update_display(self):
-        self.renderer.screen.clear()  # Очищаем экран перед отрисовкой
-        self.renderer.render_map(self.map, self.hero, self.enemies, self.items, force_redraw=True)
+        # Update visibility
+        self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
+        visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
+        
+        
+        self.renderer.screen.clear()
+        self.renderer.render_map(
+            self.map,
+            self.hero,
+            visible_entities['enemies'],
+            visible_entities['items'],
+            self.vision_system,
+            force_redraw=True
+        )
         self._draw_panels()
         self.renderer.screen.refresh()
 
