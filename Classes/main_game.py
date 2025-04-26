@@ -196,9 +196,9 @@ class Game:
     def _handle_key_press(self, key):
         # Обработка инвентаря
         if self.inventory.is_open:
-            if key == curses.KEY_UP:  # Стрелка вверх
+            if key == curses.KEY_UP:
                 self.inventory.change_slot(-1)
-            elif key == curses.KEY_DOWN:  # Стрелка вниз
+            elif key == curses.KEY_DOWN:
                 self.inventory.change_slot(1)
             elif key == ord('e'):  # Использовать предмет
                 self.inventory.use_active_item()

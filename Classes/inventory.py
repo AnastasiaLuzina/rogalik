@@ -25,10 +25,9 @@ class Inventory:
         if self.game:
             self.game.interaction_panel.add_message("Инвентарь полон!")
         return False
-
+        
     def change_slot(self, direction: int):
-        """Переключает активный слот с учетом занятых слотов"""
-        occupied = sorted([slot for slot in self.items if self.items.get(slot)])
+        occupied = sorted([slot for slot in self.items if self.items[slot]])
         if not occupied:
             return
         
@@ -39,6 +38,7 @@ class Inventory:
             new_idx = 0
         
         self.active_slot = occupied[new_idx]
+        # Явно обновляем интерфейс
         if self.game:
             self.game._update_interface()
 
