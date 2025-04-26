@@ -1,26 +1,17 @@
 import random
 
-class Inventory:
-    def __init__(self, count_of_slots: int, items: dict = None):
-        self.count_of_slots = count_of_slots
-        self.items = items if items is not None else {}
-
-    def add_item(self, item) -> bool:
-        if len(self.items) < self.count_of_slots:
-            slot = len(self.items) + 1
-            self.items[slot] = item
-            print(f"Предмет {item.title} добавлен в слот {slot}.")
-            return True
-        else:
-            print("Инвентарь полон!")
-            return False
-
 class Items:
     def __init__(self, title: str, type: str, symbol: str):
         self.title = title
         self.type = type
         self.symbol = symbol
-        
+    
+    def _pick_up_item(self, item):
+        if not self.inventory.add_to_active_slot(item):
+            self.interaction_panel.add_message("Слот занят! Смените активный слот")
+        else:
+            self.items.remove(item)
+
     def _break_and_remove(self, inventory: 'Inventory'):
         """Удаляет сломанный предмет из инвентаря"""
         if hasattr(self, 'durability') and self.durability <= 0 and inventory:

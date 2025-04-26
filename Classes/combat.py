@@ -2,7 +2,7 @@ import time
 import random
 import curses
 from items import Sword, Bow, IceStaff, Shield, HealthPotion
-
+from colorama import Fore 
 class CombatSystem:
     def __init__(self, game, enemy, screen):
         self.game = game
@@ -94,7 +94,7 @@ class CombatSystem:
                 weapon = item
                 base_damage = item.damage
                 break
-        
+            
         damage = self.calculate_damage(base_damage)
         
         if weapon:
