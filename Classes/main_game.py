@@ -174,12 +174,12 @@ class Game:
         self.health_panel.current_hp = self.hero.current_health
         
     def _update_interface(self):
-        self._sync_health()
-        self.check_item_interaction()
+        self._sync_health()  # Синхронизируем здоровье
+        self.check_item_interaction()  # Проверяем взаимодействие с предметами
         if self.inventory.is_open:
-            self._draw_inventory()
+            self._draw_inventory()  # Отрисовываем инвентарь
         else:
-            self._update_display()
+            self._update_display() 
         # Показ/скрытие кнопки
         if self.nearby_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
@@ -191,19 +191,23 @@ class Game:
         self.interaction_panel.show_inventory(
             self.inventory.items,
             self.inventory.active_slot
-        )              
+        )
+        self._update_display()         
 
     def _handle_key_press(self, key):
         # Обработка инвентаря
         if self.inventory.is_open:
-            if key == curses.KEY_UP:
+            if key == curses.KEY_LEFT:
                 self.inventory.change_slot(-1)
-            elif key == curses.KEY_DOWN:
+            elif key == curses.KEY_RIGHT:
                 self.inventory.change_slot(1)
-            elif key == ord('e'):  # Использовать предмет
+            elif key == ord('e'):  # Использовать
                 self.inventory.use_active_item()
-            elif key in (ord('q'), 9):  # Закрыть инвентарь (TAB или Q)
+            elif key == ord('r'):  # Выбросить
+                self.inventory.remove_active_item()
+            elif key == 9:  # TAB
                 self.inventory.toggle()
+            self._update_interface()
             return
 
         # Обработка обычного режима

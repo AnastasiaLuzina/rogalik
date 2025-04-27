@@ -17,7 +17,7 @@ class Renderer:
         curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     # Enemy
         curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # Item
         curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    # UI
-        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Активные элементы
+        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Для активного слота
 
     def init_screen(self):
         self.screen = curses.initscr()

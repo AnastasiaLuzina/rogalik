@@ -55,16 +55,19 @@ class InteractionPanel:
 
     def show_inventory(self, items, active_slot):
         self.messages.clear()
-        # Заголовок желтым (пара 6)
-        self.messages.append(("ИНВЕНТАРЬ (TAB для закрытия)", curses.color_pair(6)))  
+        self.messages.append(("ИНВЕНТАРЬ (TAB - закрыть)", curses.color_pair(6)))
         
         # Слоты
-        for slot in sorted(items.keys()):
+        for slot in range(1, 9):
             item = items.get(slot)
-            if item:
-                # Активный слот: желтый (пара 6), остальные: белый (пара 2)
-                color = curses.color_pair(6) if slot == active_slot else curses.color_pair(2)
-                self.messages.append((f"Слот {slot}: {item.title}", color))
+            color = curses.color_pair(6) if slot == active_slot else curses.color_pair(2)
+            prefix = "> " if slot == active_slot else "  "
+            text = f"{prefix}Слот {slot}: {item.title if item else 'Пусто'}"
+            self.messages.append((text, color))
+        
+        # Кнопки управления
+        self.messages.append(("[E] Использовать  [R] Выбросить", curses.color_pair(5)))
+
 
     def show_pickup_button(self, count):
         """Показывает кнопку подбора"""
