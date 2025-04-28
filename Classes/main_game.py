@@ -144,11 +144,12 @@ class Game:
     def _move_hero(self, dx, dy):
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
         if (new_x, new_y) in self.map.walkable:
-            # ... (проверка на врага)
+            enemy = self._get_enemy_at(new_x, new_y)
+            if enemy:
+                self._handle_combat(enemy)  # Запуск боя
+                return  # Не перемещаем героя, если начался бой
             self.hero.x, self.hero.y = new_x, new_y
-            self._update_interface()  # Добавьте эту строку
             self._update_display()
-
 
     def _get_enemy_at(self, x, y):
         for enemy in self.enemies:
