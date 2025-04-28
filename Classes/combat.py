@@ -209,7 +209,10 @@ class CombatSystem:
         """Обрабатывает победу над врагом"""
         victory_message = f"⚔️ Вы победили {self.enemy.char}!"
         self.add_log_message(victory_message)
-        self.game.interaction_panel.add_message(victory_message)  # Добавляем в InteractionPanel
+        self.game.interaction_panel.add_message(victory_message)
+        
+        # Увеличиваем счетчик убитых врагов
+        self.game.update_killed_counter()  # Новая строка
         
         for i in range(self.victory_delay, 0, -1):
             self.add_log_message(f"Возвращение через {i}...")

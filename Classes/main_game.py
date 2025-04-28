@@ -27,6 +27,8 @@ class Game:
         # Инициализация инвентаря
         self.inventory = Inventory(count_of_slots=8, game=self)
         self.hero.inventory = self.inventory
+        self.killed_enemies = 0 
+        self.total_enemies = 0 
         
         # Инициализация карты и систем
         self.map = Map(MAP_WIDTH, MAP_HEIGHT)
@@ -41,9 +43,11 @@ class Game:
             x=MAP_WIDTH + 1, y=1,
             width=PANEL_WIDTH, height=HEALTH_HEIGHT,
             current_hp=self.hero.current_health,  # Используем реальное здоровье
-            max_hp=self.hero.max_health
+            max_hp=self.hero.max_health,
+            killed_enemies=self.killed_enemies,  # <-- Здесь была пропущена запятая
+            total_enemies=self.total_enemies
         )
-        
+
         self.interaction_panel = InteractionPanel(
             x=MAP_WIDTH + 1, y=HEALTH_HEIGHT + 1,
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
@@ -87,19 +91,33 @@ class Game:
                 items_to_place.append(new_item)
 
         for room in self.map.rooms:
-            if room != hero_room:
-                num_enemies = random.randint(0, 3)
-                for _ in range(num_enemies):
-                    enemy_type = random.choice([Undead, Ghost, DarkMage])
-                    x = random.randint(room['x1'], room['x2'])
-                    y = random.randint(room['y1'], room['y2'])
-                    self.enemies.append(enemy_type(x, y))
+                if room != hero_room:
+                    num_enemies = random.randint(0, 3)
+                    self.total_enemies += num_enemies  # Обновляем общее количество врагов
+                    for _ in range(num_enemies):
+                        enemy_type = random.choice([Undead, Ghost, DarkMage])
+                        x = random.randint(room['x1'], room['x2'])
+                        y = random.randint(room['y1'], room['y2'])
+                        self.enemies.append(enemy_type(x, y))
 
                 if items_to_place and random.random() < 0.8:
                     item = items_to_place.pop()
                     x = random.randint(room['x1'], room['x2'])
                     y = random.randint(room['y1'], room['y2'])
                     self.items.append((x, y, item))
+
+        self.health_panel.total_enemies = self.total_enemies
+
+    def update_killed_counter(self):
+        self.killed_enemies += 1
+        self.health_panel.killed_enemies = self.killed_enemies
+        self.health_panel.render(self.renderer.screen)  # Перерисовываем панель
+        # Анимация обновления
+        for _ in range(3):
+            self.health_panel.render(self.renderer.screen)
+            self.renderer.screen.refresh()
+            time.sleep(0.1)
+            curses.curs_set(0)
 
     def _draw_initial_map(self):
         # Initialize vision system and get visible entities
@@ -126,8 +144,9 @@ class Game:
     def _update_display(self):
         # Update visibility
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
-        visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
-        
+        visible_entities = self.vision_system.get_visible_entities(
+            self.hero, self.map, self.enemies, self.items
+        )
         
         self.renderer.screen.clear()
         self.renderer.render_map(
@@ -140,7 +159,7 @@ class Game:
         )
         self._draw_panels()
         self.renderer.screen.refresh()
-
+        
     def _move_hero(self, dx, dy):
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
         if (new_x, new_y) in self.map.walkable:
@@ -149,44 +168,48 @@ class Game:
                 self._handle_combat(enemy)
                 return
             self.hero.x, self.hero.y = new_x, new_y
-            self._move_enemies()
-            self._update_interface()  # Сначала обновляем интерфейс
-            self._update_display() 
+            self._update_display()  # Сначала обновляем видимость
+            self._move_enemies()  
 
 
-            
     def _move_enemies(self):
-        """Обновляет позиции всех врагов"""
+        """Обновляет позиции врагов только в зоне видимости"""
+        # Обновляем данные о видимости перед расчетом движения
+        self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
+        visible_entities = self.vision_system.get_visible_entities(
+            self.hero, self.map, self.enemies, self.items
+        )
+        visible_enemies = visible_entities['enemies']
+        
         hero_pos = (self.hero.x, self.hero.y)
-        occupied_positions = {hero_pos}
-        
-        # Сначала собираем все занятые позиции
-        for enemy in self.enemies:
-            if enemy.current_health > 0:
-                occupied_positions.add((enemy.x, enemy.y))
-        
-        # Теперь обрабатываем движение каждого врага
+        occupied = {hero_pos}
+
+        # Собираем занятые позиции ВИДИМЫХ врагов
+        for enemy in visible_enemies:
+            occupied.add((enemy.x, enemy.y))
+
+        # Перебираем всех врагов, но двигаем только видимых
         for enemy in self.enemies:
             if enemy.current_health <= 0:
+                continue
+                
+            # Пропускаем врагов вне поля зрения
+            if enemy not in visible_enemies:
                 continue
                 
             dx, dy = self._calculate_enemy_move(enemy, hero_pos)
             new_x = enemy.x + dx
             new_y = enemy.y + dy
-            
-            # Проверяем, что новая позиция доступна и не занята
-            if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied_positions:
-                # Проверяем, не врезаемся ли в игрока
+
+            if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied:
                 if (new_x, new_y) == hero_pos:
                     self._handle_combat(enemy)
-                    break  # Прерываем движение после атаки
-                
-                # Обновляем позицию врага
+                    break
+                    
                 enemy.x = new_x
                 enemy.y = new_y
-                occupied_positions.add((new_x, new_y))
+                occupied.add((new_x, new_y))
                 
-                # Проверяем, не наступили ли на игрока после перемещения
                 if (enemy.x, enemy.y) == hero_pos:
                     self._handle_combat(enemy)
 
