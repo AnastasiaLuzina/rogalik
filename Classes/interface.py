@@ -1,3 +1,4 @@
+from colorama import Fore, Back, Style 
 from map import MAP_WIDTH, MAP_HEIGHT
 import re
 import curses
@@ -42,6 +43,7 @@ class InteractionPanel:
         self.width = width
         self.height = height
         self.messages = []
+        self.show_pickup = False
 
     def add_message(self, message: str):
         max_length = self.width - 2
@@ -51,23 +53,42 @@ class InteractionPanel:
         if len(self.messages) > self.height - 2:
             self.messages.pop(0)
 
-    def show_inventory(self, items: list, selected: int):
-        self.messages = []
-        for i, item in enumerate(items):
-            button = f"[{i+1}] {item.title}"
-            if i == selected:
-                button = f"> {button}"
-            else:
-                button = f"  {button}"
-            self.add_message(button)
-        self.add_message("")
-        self.add_message("↑/↓ - выбрать, Enter - подтвердить")
+    def show_inventory(self, items, active_slot):
+        self.messages.clear()
+        self.messages.append(("ИНВЕНТАРЬ (TAB - закрыть)", curses.color_pair(6)))
+        
+        # Слоты
+        for slot in range(1, 9):
+            item = items.get(slot)
+            color = curses.color_pair(6) if slot == active_slot else curses.color_pair(2)
+            prefix = "> " if slot == active_slot else "  "
+            text = f"{prefix}Слот {slot}: {item.title if item else 'Пусто'}"
+            self.messages.append((text, color))
+        
+        # Кнопки управления
+        self.messages.append(("[E] Использовать  [R] Выбросить", curses.color_pair(5)))
 
+
+    def show_pickup_button(self, count):
+        """Показывает кнопку подбора"""
+        self.messages = [f"[F] Подобрать ({count} предметов)"]
+
+    def hide_pickup_button(self):
+        """Скрывает кнопку подбора"""
+        if self.messages and "[F] Подобрать" in self.messages[0]:
+            self.messages.clear()
+            
     def render(self, screen):
+        # Отрисовка рамки
         screen.addstr(self.y, self.x, '╔' + '═'*(self.width-2) + '╗')
-        for dy in range(1, self.height-1):
-            screen.addstr(self.y + dy, self.x, '║' + ' '*(self.width-2) + '║')
+        for i in range(1, self.height-1):
+            screen.addstr(self.y + i, self.x, '║' + ' '*(self.width-2) + '║')
         screen.addstr(self.y + self.height - 1, self.x, '╚' + '═'*(self.width-2) + '╝')
         
+        # Отрисовка сообщений с учётом цветов
         for i, msg in enumerate(self.messages):
-            screen.addstr(self.y + 1 + i, self.x + 1, msg[:self.width-2])
+            if isinstance(msg, tuple):  # Если сообщение содержит цвет
+                text, color = msg
+                screen.addstr(self.y + 1 + i, self.x + 1, text[:self.width-2], color)
+            else:
+                screen.addstr(self.y + 1 + i, self.x + 1, msg[:self.width-2])

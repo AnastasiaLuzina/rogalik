@@ -1,6 +1,6 @@
 from colorama import init, Back, Fore
 import random
-from items import Inventory
+from inventory import Inventory
 
 init(autoreset=True)
 
@@ -12,11 +12,35 @@ class Person:
         self.color = color
 
 class Hero(Person):
-    def __init__(self, x: int, y: int, max_health: int = 100, current_health: int = 100):
-        super().__init__(x, y, '@', Fore.CYAN)  
+    def __init__(self, x: int, y: int, game, max_health: int = 100):
+        super().__init__(x, y, '@', Fore.CYAN)
+        self.game = game  # Сохраняем ссылку на игру
         self.max_health = max_health
-        self.current_health = current_health
-        self.inventory = Inventory(10)  
+        self.current_health = max_health
+        self.inventory = None  # Будет установлено позже
+
+    def pick_up_item(self, item):
+        """Подобрать предмет в активный слот"""
+        return self.inventory.add_to_active_slot(item)
+
+    def drop_item(self):
+        """Выбросить предмет из активного слота"""
+        return self.inventory.remove_from_active_slot()
+
+    def use_item(self, target=None):
+        return self.inventory.use_active_item(target)
+
+    def attack(self):
+        active_item = self.inventory.get_active_item()
+        if isinstance(active_item, Weapon):
+            damage = active_item.use(self.inventory)
+            print(f"Вы нанесли {damage} урона!")
+            return damage
+        print("Нет оружия в активном слоте!")
+        return 0
+
+
+
 class Enemy(Person):
     def __init__(self, x: int, y: int, char: str, color: str, max_health: int, damage: int):
         super().__init__(x, y, char, color)

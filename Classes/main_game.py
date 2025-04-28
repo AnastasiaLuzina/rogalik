@@ -9,52 +9,41 @@ from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT,
 from map_render import Renderer
 from combat import CombatSystem
 from vision import VisionSystem
+from inventory import Inventory
+from colorama import init
+
+
+init(autoreset=True) 
 
 class Game:
     def __init__(self):
-
+        # Инициализация основных компонентов
         self.renderer = Renderer()
-
-        self.renderer.init_screen()  # Инициализируем экран curses
-
-
-        # Получаем размеры терминала
-        terminal_width = curses.COLS
-        terminal_height = curses.LINES
+        self.renderer.init_screen()
         
-        if MAP_WIDTH > terminal_width or MAP_HEIGHT > terminal_height:
-            self.renderer.close_screen()
-            raise ValueError(
-                f"Терминал слишком мал. Требуется минимум {MAP_WIDTH}x{MAP_HEIGHT}. "
-                f"Текущий размер: {terminal_width}x{terminal_height}."
-            )
-
+        # Создание героя ПЕРВЫМ
+        self.hero = Hero(x=0, y=0, game=self)
+        
+        # Инициализация инвентаря
+        self.inventory = Inventory(count_of_slots=8, game=self)
+        self.hero.inventory = self.inventory
+        
+        # Инициализация карты и систем
         self.map = Map(MAP_WIDTH, MAP_HEIGHT)
-        self.vision_system = VisionSystem(vision_radius=5)  # Добавьте эту строку
-        self.hero = None
+        self.vision_system = VisionSystem(vision_radius=5)
         self.enemies = []
         self.items = []
         self.game_over = False
         self.messages = []
-        self.inventory_items = [
-            HealthPotion("Зелье здоровья", 30, '❤️'),
-            Sword("Меч", 20, '⚔️', 50),
-            Shield("Щит", 10, '🛡️', 20)
-        ]
-        self.inventory_open = False
-        self.selected_item = 0
-
-        curses.update_lines_cols()  # Обновляем размеры терминала
-        if MAP_WIDTH > curses.COLS or MAP_HEIGHT > curses.LINES:
-            raise ValueError("Размеры карты больше размеров терминала!")
         
-        # Панели интерфейса
+        # Инициализация панелей интерфейса
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
             width=PANEL_WIDTH, height=HEALTH_HEIGHT,
-            current_hp=100, max_hp=100
+            current_hp=self.hero.current_health,  # Используем реальное здоровье
+            max_hp=self.hero.max_health
         )
-
+        
         self.interaction_panel = InteractionPanel(
             x=MAP_WIDTH + 1, y=HEALTH_HEIGHT + 1,
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
@@ -63,12 +52,12 @@ class Game:
         self._place_hero_and_entities()
         self._draw_initial_map()
 
-
     def _place_hero_and_entities(self):
         hero_room = random.choice(self.map.rooms)
         hero_x = random.randint(hero_room['x1'], hero_room['x2'])
         hero_y = random.randint(hero_room['y1'], hero_room['y2'])
-        self.hero = Hero(hero_x, hero_y)
+        self.hero.x = hero_x
+        self.hero.y = hero_y
 
         item_templates = [
             Sword("Меч", 20, '/', 50),
@@ -133,6 +122,7 @@ class Game:
         self.health_panel.render(self.renderer.screen)
         self.interaction_panel.render(self.renderer.screen)
 
+
     def _update_display(self):
         # Update visibility
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
@@ -155,29 +145,81 @@ class Game:
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
         if (new_x, new_y) in self.map.walkable:
             enemy = self._get_enemy_at(new_x, new_y)
-            if enemy and enemy.current_health > 0:
+            if enemy:
                 self._handle_combat(enemy)
                 return
-            
-            # Проверка на наличие предмета
-            item_to_remove = None
-            for i, (item_x, item_y, item) in enumerate(self.items):
-                if item_x == new_x and item_y == new_y:
-                    if self.hero.inventory.add_item(item):
-                        self.interaction_panel.add_message(f"Вы подобрали: {item.title}")
-                        item_to_remove = i
-                        break
-            
-            if item_to_remove is not None:
-                self.items.pop(item_to_remove)
-            
             self.hero.x, self.hero.y = new_x, new_y
-            self._update_display()
+            self._move_enemies()
+            self._update_interface()  # Сначала обновляем интерфейс
+            self._update_display() 
+
+
+            
+    def _move_enemies(self):
+        """Обновляет позиции всех врагов"""
+        hero_pos = (self.hero.x, self.hero.y)
+        occupied_positions = {hero_pos}
+        
+        # Сначала собираем все занятые позиции
+        for enemy in self.enemies:
+            if enemy.current_health > 0:
+                occupied_positions.add((enemy.x, enemy.y))
+        
+        # Теперь обрабатываем движение каждого врага
+        for enemy in self.enemies:
+            if enemy.current_health <= 0:
+                continue
+                
+            dx, dy = self._calculate_enemy_move(enemy, hero_pos)
+            new_x = enemy.x + dx
+            new_y = enemy.y + dy
+            
+            # Проверяем, что новая позиция доступна и не занята
+            if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied_positions:
+                # Проверяем, не врезаемся ли в игрока
+                if (new_x, new_y) == hero_pos:
+                    self._handle_combat(enemy)
+                    break  # Прерываем движение после атаки
+                
+                # Обновляем позицию врага
+                enemy.x = new_x
+                enemy.y = new_y
+                occupied_positions.add((new_x, new_y))
+                
+                # Проверяем, не наступили ли на игрока после перемещения
+                if (enemy.x, enemy.y) == hero_pos:
+                    self._handle_combat(enemy)
+
+    def _calculate_enemy_move(self, enemy, hero_pos):
+        """Рассчитывает направление движения врага к игроку"""
+        hx, hy = hero_pos
+        ex, ey = enemy.x, enemy.y
+        
+        # Определяем направление движения
+        dx = 0
+        if hx > ex:
+            dx = 1
+        elif hx < ex:
+            dx = -1
+            
+        dy = 0
+        if hy > ey:
+            dy = 1
+        elif hy < ey:
+            dy = -1
+            
+        # Случайный выбор направления при равных условиях
+        if random.random() < 0.5:
+            return (dx, 0) if dx != 0 else (0, dy)
+        else:
+            return (0, dy) if dy != 0 else (dx, 0)
+
     def _get_enemy_at(self, x, y):
         for enemy in self.enemies:
             if enemy.x == x and enemy.y == y and enemy.current_health > 0:
                 return enemy
         return None
+
 
     def _handle_combat(self, enemy):
         """Запускает боевую систему с выбранным врагом"""
@@ -193,35 +235,58 @@ class Game:
         self.messages = []  # Очищаем сообщения
 
     def _sync_health(self):
-        """Синхронизирует здоровье в HealthPanel с текущим здоровьем героя"""
         self.health_panel.current_hp = self.hero.current_health
+        
+    def _update_interface(self):
+        self._sync_health()
+        # Сначала обновляем состояние кнопки
+        has_items = self.check_item_interaction()  # Теперь возвращает bool
+        # Затем обновляем отображение
+        if self.inventory.is_open:
+            self._draw_inventory()
+        else:
+            self._update_display()
+        # Показ/скрытие кнопки
+        if self.nearby_items:
+            self.interaction_panel.show_pickup_button(len(self.nearby_items))
+        else:
+            self.interaction_panel.hide_pickup_button()
 
-    def _update_interface(self):
-        self._sync_health()  # Синхронизируем здоровье
-        self._update_display()
-    def _update_interface(self):
-        self.health_panel.current_hp = self.hero.current_health
-        self._update_display()
+    def _draw_inventory(self):
+        """Новый метод отрисовки слотов"""
+        self.interaction_panel.show_inventory(
+            self.inventory.items,
+            self.inventory.active_slot
+        )
+        self._update_display()         
 
     def _handle_key_press(self, key):
-        if self.inventory_open:
-            if key == ord('w') or key == curses.KEY_UP:
-                self._select_item(-1)
-            elif key == ord('s') or key == curses.KEY_DOWN:
-                self._select_item(1)
-            elif key == ord('\n'):
-                self._use_item()
+        # Обработка инвентаря
+        if self.inventory.is_open:
+            if key == curses.KEY_LEFT:
+                self.inventory.change_slot(-1)
+            elif key == curses.KEY_RIGHT:
+                self.inventory.change_slot(1)
+            elif key == ord('e'):  # Использовать
+                self.inventory.use_active_item()
+            elif key == ord('r'):  # Выбросить
+                self.inventory.remove_active_item()
+            elif key == 9:  # TAB
+                self.inventory.toggle()
+            self._update_interface()
             return
 
-        if key == ord('q'):
+        # Обработка обычного режима
+        if key == 9:  # Открыть инвентарь (TAB)
+            self.inventory.toggle()
+        elif key == ord('f'):  # Подобрать предмет
+            self.handle_pickup()
+        elif key in (ord('w'), ord('a'), ord('s'), ord('d')):  # Движение
+            dx = 1 if key == ord('d') else -1 if key == ord('a') else 0
+            dy = 1 if key == ord('s') else -1 if key == ord('w') else 0
+            self._move_hero(dx, dy)
+        elif key == ord('q'):  # Выход
             self.game_over = True
-        elif key in (ord('w'), ord('a'), ord('s'), ord('d')):
-            self._move_hero(
-                dx=1 if key == ord('d') else -1 if key == ord('a') else 0,
-                dy=1 if key == ord('s') else -1 if key == ord('w') else 0
-            )
-        elif key == ord('i'):
-            self._toggle_inventory()
 
     def _toggle_inventory(self):
         self.inventory_open = not self.inventory_open
@@ -238,6 +303,42 @@ class Game:
         )
         self._update_display()
 
+
+
+    def check_item_interaction(self):
+        """Проверяет предметы в соседних клетках (без диагоналей)"""
+        self.nearby_items = []
+        hero_x, hero_y = self.hero.x, self.hero.y
+        for item in self.items:
+            x, y, item_obj = item  # Исправлено: распаковка объекта
+            # Проверка на прямое соседство (вверх/вниз/влево/вправо)
+            if (abs(hero_x - x) == 1 and hero_y == y) or (abs(hero_y - y) == 1 and hero_x == x):
+                self.nearby_items.append(item)
+        # Принудительное обновление панели взаимодействия
+        if self.nearby_items:
+            self.interaction_panel.show_pickup_button(len(self.nearby_items))
+        else:
+            self.interaction_panel.hide_pickup_button()
+        return len(self.nearby_items) > 0
+
+
+    def handle_pickup(self):
+        if not self.nearby_items:
+            return
+        
+        picked_items = []
+        for item in self.nearby_items[:]:
+            x, y, item_obj = item
+            if self.inventory.add_item(item_obj):
+                self.items.remove(item)
+                picked_items.append(item_obj.title)
+        
+        if picked_items:
+            self.interaction_panel.add_message(f"Подобрано: {', '.join(picked_items)}")
+            self.nearby_items.clear()  # Очищаем список после подбора
+            self._update_interface()  # Принудительно обновляем интерфейс
+
+                
     def _select_item(self, direction: int):
         if not self.inventory_open:
             return
