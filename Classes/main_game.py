@@ -149,9 +149,12 @@ class Game:
                 self._handle_combat(enemy)
                 return
             self.hero.x, self.hero.y = new_x, new_y
-            self._move_enemies()  # Добавляем вызов перемещения врагов
-            self._update_display()
+            self._move_enemies()
+            self._update_interface()  # Сначала обновляем интерфейс
+            self._update_display() 
 
+
+            
     def _move_enemies(self):
         """Обновляет позиции всех врагов"""
         hero_pos = (self.hero.x, self.hero.y)
@@ -186,7 +189,7 @@ class Game:
                 # Проверяем, не наступили ли на игрока после перемещения
                 if (enemy.x, enemy.y) == hero_pos:
                     self._handle_combat(enemy)
-                    
+
     def _calculate_enemy_move(self, enemy, hero_pos):
         """Рассчитывает направление движения врага к игроку"""
         hx, hy = hero_pos
@@ -235,12 +238,14 @@ class Game:
         self.health_panel.current_hp = self.hero.current_health
         
     def _update_interface(self):
-        self._sync_health()  # Синхронизируем здоровье
-        self.check_item_interaction()  # Проверяем взаимодействие с предметами
+        self._sync_health()
+        # Сначала обновляем состояние кнопки
+        has_items = self.check_item_interaction()  # Теперь возвращает bool
+        # Затем обновляем отображение
         if self.inventory.is_open:
-            self._draw_inventory()  # Отрисовываем инвентарь
+            self._draw_inventory()
         else:
-            self._update_display() 
+            self._update_display()
         # Показ/скрытие кнопки
         if self.nearby_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
@@ -298,16 +303,24 @@ class Game:
         )
         self._update_display()
 
+
+
     def check_item_interaction(self):
         """Проверяет предметы в соседних клетках (без диагоналей)"""
         self.nearby_items = []
         hero_x, hero_y = self.hero.x, self.hero.y
         for item in self.items:
-            x, y, _ = item
+            x, y, item_obj = item  # Исправлено: распаковка объекта
             # Проверка на прямое соседство (вверх/вниз/влево/вправо)
             if (abs(hero_x - x) == 1 and hero_y == y) or (abs(hero_y - y) == 1 and hero_x == x):
                 self.nearby_items.append(item)
+        # Принудительное обновление панели взаимодействия
+        if self.nearby_items:
+            self.interaction_panel.show_pickup_button(len(self.nearby_items))
+        else:
+            self.interaction_panel.hide_pickup_button()
         return len(self.nearby_items) > 0
+
 
     def handle_pickup(self):
         if not self.nearby_items:
