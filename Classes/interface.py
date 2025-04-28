@@ -111,7 +111,7 @@ class InteractionPanel:
                 screen.addstr(self.y + 1 + i, self.x + 1, msg[:self.width-2])
 
 class Screen:
-    def init(self, screen):
+    def __init__(self, screen):
         self.screen = screen
         self.height, self.width = screen.getmaxyx()
         curses.curs_set(0)  # Скрыть курсор
@@ -131,8 +131,8 @@ class Screen:
 
 
 class StartScreen(Screen):
-    def init(self, screen):
-        super().init(screen)
+    def __init__(self, screen):
+        super().__init__(screen)
     
     def show(self):
         self.clear_screen()
@@ -144,8 +144,8 @@ class StartScreen(Screen):
 
 
 class DeathScreen(Screen):
-    def init(self, screen):
-        super().init(screen)
+    def __init__(self, screen):
+        super().__init__(screen)
     
     def show(self):
         self.clear_screen()
