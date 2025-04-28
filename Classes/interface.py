@@ -109,3 +109,47 @@ class InteractionPanel:
                 screen.addstr(self.y + 1 + i, self.x + 1, text[:self.width-2], color)
             else:
                 screen.addstr(self.y + 1 + i, self.x + 1, msg[:self.width-2])
+
+class Screen:
+    def init(self, screen):
+        self.screen = screen
+        self.height, self.width = screen.getmaxyx()
+        curses.curs_set(0)  # Скрыть курсор
+    
+    def draw_border(self):
+        self.screen.border('|', '|', '-', '-', '+', '+', '+', '+')
+    
+    def clear_screen(self):
+        self.screen.clear()
+        self.draw_border()
+    
+    def center_text(self, y_offset, text, attr=0):
+        x = (self.width - len(text)) // 2
+        y = self.height // 2 + y_offset
+        self.screen.addstr(y, x, text, attr)
+        self.screen.refresh()
+
+
+class StartScreen(Screen):
+    def init(self, screen):
+        super().init(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ДОБРО ПОЖАЛОВАТЬ В ПОДЗЕМЕЛЬЕ ТЬМЫ", curses.A_BOLD)
+        self.center_text(-2, "Испытай свою храбрость...", curses.A_BOLD)
+        self.center_text(1, "Нажмите 'S' чтобы начать игру")
+        self.center_text(2, "Нажмите 'Q' чтобы выйти")
+
+
+class DeathScreen(Screen):
+    def init(self, screen):
+        super().init(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ВЫ ПОГИБЛИ!", curses.A_BOLD | curses.A_BLINK)
+        self.center_text(-1, "Нажмите 'R' чтобы начать заново")
+        self.center_text(0, "Нажмите 'Q' чтобы выйти")
