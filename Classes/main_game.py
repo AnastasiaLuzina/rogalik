@@ -146,10 +146,70 @@ class Game:
         if (new_x, new_y) in self.map.walkable:
             enemy = self._get_enemy_at(new_x, new_y)
             if enemy:
-                self._handle_combat(enemy)  # Запуск боя
-                return  # Не перемещаем героя, если начался бой
+                self._handle_combat(enemy)
+                return
             self.hero.x, self.hero.y = new_x, new_y
+            self._move_enemies()  # Добавляем вызов перемещения врагов
             self._update_display()
+
+    def _move_enemies(self):
+        """Обновляет позиции всех врагов"""
+        hero_pos = (self.hero.x, self.hero.y)
+        occupied_positions = {hero_pos}
+        
+        # Сначала собираем все занятые позиции
+        for enemy in self.enemies:
+            if enemy.current_health > 0:
+                occupied_positions.add((enemy.x, enemy.y))
+        
+        # Теперь обрабатываем движение каждого врага
+        for enemy in self.enemies:
+            if enemy.current_health <= 0:
+                continue
+                
+            dx, dy = self._calculate_enemy_move(enemy, hero_pos)
+            new_x = enemy.x + dx
+            new_y = enemy.y + dy
+            
+            # Проверяем, что новая позиция доступна и не занята
+            if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied_positions:
+                # Проверяем, не врезаемся ли в игрока
+                if (new_x, new_y) == hero_pos:
+                    self._handle_combat(enemy)
+                    break  # Прерываем движение после атаки
+                
+                # Обновляем позицию врага
+                enemy.x = new_x
+                enemy.y = new_y
+                occupied_positions.add((new_x, new_y))
+                
+                # Проверяем, не наступили ли на игрока после перемещения
+                if (enemy.x, enemy.y) == hero_pos:
+                    self._handle_combat(enemy)
+                    
+    def _calculate_enemy_move(self, enemy, hero_pos):
+        """Рассчитывает направление движения врага к игроку"""
+        hx, hy = hero_pos
+        ex, ey = enemy.x, enemy.y
+        
+        # Определяем направление движения
+        dx = 0
+        if hx > ex:
+            dx = 1
+        elif hx < ex:
+            dx = -1
+            
+        dy = 0
+        if hy > ey:
+            dy = 1
+        elif hy < ey:
+            dy = -1
+            
+        # Случайный выбор направления при равных условиях
+        if random.random() < 0.5:
+            return (dx, 0) if dx != 0 else (0, dy)
+        else:
+            return (0, dy) if dy != 0 else (dx, 0)
 
     def _get_enemy_at(self, x, y):
         for enemy in self.enemies:
