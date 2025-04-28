@@ -163,14 +163,23 @@ class Game:
     def _move_hero(self, dx, dy):
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
         if (new_x, new_y) in self.map.walkable:
+            # Проверяем на наличие врага
             enemy = self._get_enemy_at(new_x, new_y)
             if enemy:
                 self._handle_combat(enemy)
                 return
+                
+            # Обновляем позицию героя
             self.hero.x, self.hero.y = new_x, new_y
-            self._update_display()  # Сначала обновляем видимость
-            self._move_enemies()  
-
+            
+            # Обновляем видимость и отображение
+            self._update_display()
+            
+            # Проверяем предметы для подбора
+            self.check_item_interaction()
+            
+            # Двигаем врагов
+            self._move_enemies()
 
     def _move_enemies(self):
         """Обновляет позиции врагов только в зоне видимости"""
@@ -262,14 +271,11 @@ class Game:
         
     def _update_interface(self):
         self._sync_health()
-        # Сначала обновляем состояние кнопки
-        has_items = self.check_item_interaction()  # Теперь возвращает bool
-        # Затем обновляем отображение
+        has_items = self.check_item_interaction()  # Проверяем предметы
         if self.inventory.is_open:
             self._draw_inventory()
         else:
             self._update_display()
-        # Показ/скрытие кнопки
         if self.nearby_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
         else:
@@ -329,21 +335,29 @@ class Game:
 
 
     def check_item_interaction(self):
-        """Проверяет предметы в соседних клетках (без диагоналей)"""
+        """Проверяет предметы в соседних клетках (включая текущую позицию)"""
         self.nearby_items = []
         hero_x, hero_y = self.hero.x, self.hero.y
+        
         for item in self.items:
-            x, y, item_obj = item  # Исправлено: распаковка объекта
-            # Проверка на прямое соседство (вверх/вниз/влево/вправо)
-            if (abs(hero_x - x) == 1 and hero_y == y) or (abs(hero_y - y) == 1 and hero_x == x):
+            x, y, item_obj = item  # Распаковываем координаты и объект предмета
+            
+            # Проверяем:
+            # 1. Прямое совпадение позиций (герой стоит на предмете)
+            # 2. Соседство по вертикали (x одинаковый, y отличается на 1)
+            # 3. Соседство по горизонтали (y одинаковый, x отличается на 1)
+            if ((hero_x == x and abs(hero_y - y) <= 1) or  # Вертикальное соседство
+                (hero_y == y and abs(hero_x - x) <= 1) or  # Горизонтальное соседство
+                (hero_x == x and hero_y == y)):           # Совпадение позиций
                 self.nearby_items.append(item)
-        # Принудительное обновление панели взаимодействия
+        
+        # Обновляем состояние кнопки взаимодействия
         if self.nearby_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
         else:
             self.interaction_panel.hide_pickup_button()
+        
         return len(self.nearby_items) > 0
-
 
     def handle_pickup(self):
         if not self.nearby_items:
