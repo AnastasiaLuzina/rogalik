@@ -76,7 +76,7 @@ class Renderer:
                     self.draw_cell(map, x, y, hero, enemies, items, vision_system)
 
         # Draw inventory button
-        inventory_button = "[I] Инвентарь"
+        inventory_button = "[Tab] Инвентарь"
         self.screen.addstr(map.height, 0, inventory_button, curses.color_pair(5))
         self.screen.refresh()
 
