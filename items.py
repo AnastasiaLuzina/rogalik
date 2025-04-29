@@ -6,21 +6,21 @@ class Items:
         self.type = type
         self.symbol = symbol
     
-    def _break_and_remove(self, inventory):
-        """Удаляет сломанный предмет и обновляет интерфейс"""
-        if inventory and getattr(self, 'durability', 1) <= 0:
-            # Удаляем все копии предмета из инвентаря
+    def _break_and_remove(self, inventory, suppress_update=False):
+        if inventory:
+            print(f"DEBUG: Attempting to remove {self.title} from inventory: {inventory.items}")
             removed = False
             for slot in list(inventory.items.keys()):
                 if inventory.items[slot] == self:
                     del inventory.items[slot]
                     removed = True
-            
-            if removed and inventory.game:
-                # Обновляем интерфейс и корректируем активный слот
+                    print(f"DEBUG: Removed {self.title} from slot {slot}")
+            if removed and inventory.game and not suppress_update:
                 inventory.game._update_interface()
-                inventory.active_slot = inventory.active_slot  # Форсируем проверку слота
+                inventory.active_slot = inventory.active_slot
+            print(f"DEBUG: Removal of {self.title} successful: {removed}")
             return removed
+        print(f"DEBUG: No inventory provided for {self.title}")
         return False
 
 class Weapon(Items):
@@ -29,38 +29,38 @@ class Weapon(Items):
         self.damage = damage
         
     def use(self, inventory) -> int:
-        return self.damage  # Теперь оружие не ломается
+        return self.damage
 
 class Sword(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "melee", symbol, damage)
-        self.combo_counter = 0
+        self.double_strike_chance = 0.2  # 20% шанс на двойной удар
         
     def use(self, inventory) -> int:
-        self.combo_counter += 1
-        if self.combo_counter % 3 == 0:
-            return self.damage * 2
+        if random.random() < self.double_strike_chance:
+            return self.damage * 2  # Двойной удар
         return self.damage
 
 class Bow(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "ranged", symbol, damage)
+        self.critical_shot_chance = 0.25  # 25% шанс на точный выстрел
         
     def use(self, inventory) -> int:
-        if random.random() < 0.25:
-            return int(self.damage * 1.5)
+        if random.random() < self.critical_shot_chance:
+            return int(self.damage * 1.5)  # Точный выстрел
         return self.damage
     
 class IceStaff(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "magic", symbol, damage)
-        self.combo_counter = 0
+        self.freeze_chance = 0.15  # 15% шанс на заморозку
+        self.freeze_duration = 3  # Заморозка на 3 хода
     
-    def use(self, inventory) -> int:
-        self.combo_counter += 1
-        if self.combo_counter % 3 == 0:
-            return self.damage * 3
-        return self.damage
+    def use(self, inventory) -> tuple:
+        if random.random() < self.freeze_chance:
+            return (self.damage, self.freeze_duration)  # Урон и заморозка
+        return (self.damage, 0)  # Только урон
 
 class HealthPotion(Items):
     def __init__(self, title: str, heal_amount: int, symbol: str):
@@ -73,12 +73,11 @@ class HealthPotion(Items):
         return heal
 
 class PoisonPotion(Items):
-    def __init__(self, title: str, damage_per_turn: int, symbol: str, duration: int):
+    def __init__(self, title: str, damage_per_turn: int, symbol: str, duration: int = 3):
         super().__init__(title, "poison_potion", symbol)
         self.damage_per_turn = damage_per_turn
         self.duration = duration
 
-    def use(self, target, inventory) -> int:
-        total_damage = self.damage_per_turn * self.duration
-        target.current_health -= total_damage
-        return total_damage
+    def use(self, target, inventory) -> tuple:
+        # Возвращаем начальный урон и параметры для эффекта яда
+        return (0, self.damage_per_turn, self.duration)  # Начальный урон 0, урон в ход, длительность

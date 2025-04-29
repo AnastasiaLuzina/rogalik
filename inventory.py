@@ -55,6 +55,7 @@ class Inventory:
             heal = item.use(self.game.hero, self)
             self.game._sync_health()
             self.game.interaction_panel.add_message(f"Использовано '{item.title}': +{heal} HP")
+            item._break_and_remove(self)  # <-- добавлено удаление
         elif isinstance(item, Weapon):
             self.equip_weapon(item)
             self.game.interaction_panel.add_message(f"Экипировано: {item.title}")
