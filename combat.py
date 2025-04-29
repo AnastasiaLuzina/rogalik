@@ -233,6 +233,9 @@ class CombatSystem:
         victory_message = f"Вы победили {self.enemy.title}!"[:self.screen.getmaxyx()[1]-2]
         self.add_log_message(victory_message)
         self.game.interaction_panel.add_message(victory_message)
+         
+         # Увеличиваем счетчик убитых врагов
+        self.game.update_killed_counter()  # Новая строка
         
         for i in range(self.victory_delay, 0, -1):
             message = f"Возвращение через {i}..."[:self.screen.getmaxyx()[1]-2]

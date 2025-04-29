@@ -30,13 +30,18 @@ class Game:
         self.items = []
         self.game_over = False
         self.messages = []
+        self.killed_enemies = 0 
+        self.total_enemies = 0
+        self.nearby_items = []
         
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
             width=PANEL_WIDTH, height=HEALTH_HEIGHT,
             current_hp=self.hero.current_health,
             max_hp=self.hero.max_health,
-            game=self
+            game=self,
+            killed_enemies=self.killed_enemies,  # <-- Здесь была пропущена запятая
+            total_enemies=self.total_enemies
         )
         
         self.interaction_panel = InteractionPanel(
@@ -82,21 +87,22 @@ class Game:
                 items_to_place.append(new_item)
 
         for room in self.map.rooms:
-            if room != hero_room:
-                num_enemies = random.randint(1, 2)
-                for _ in range(num_enemies):
-                    enemy_type = random.choice([Undead, Ghost, DarkMage])
-                    x = random.randint(room['x1'], room['x2'])
-                    y = random.randint(room['y1'], room['y2'])
-                    enemy = enemy_type(x, y)
-                    self.enemies.append(enemy)
-                    print(f"DEBUG: Added enemy {enemy.title} at ({x}, {y})")
+                if room != hero_room:
+                    num_enemies = random.randint(0, 1)
+                    self.total_enemies += num_enemies  # Обновляем общее количество врагов
+                    for _ in range(num_enemies):
+                        enemy_type = random.choice([Undead, Ghost, DarkMage])
+                        x = random.randint(room['x1'], room['x2'])
+                        y = random.randint(room['y1'], room['y2'])
+                        self.enemies.append(enemy_type(x, y))
 
-                if items_to_place:
-                    item = items_to_place.pop()
-                    x = random.randint(room['x1'], room['x2'])
-                    y = random.randint(room['y1'], room['y2'])
-                    self.items.append((x, y, item))
+                    if items_to_place:
+                        item = items_to_place.pop()
+                        x = random.randint(room['x1'], room['x2'])
+                        y = random.randint(room['y1'], room['y2'])
+                        self.items.append((x, y, item))
+
+        self.health_panel.total_enemies = self.total_enemies
 
         print(f"DEBUG: Placed {len(self.enemies)} enemies, {len(self.items)} items")
 
@@ -123,7 +129,10 @@ class Game:
 
     def _update_display(self):
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
-        visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
+        visible_entities = self.vision_system.get_visible_entities(
+             self.hero, self.map, self.enemies, self.items
+         )
+ 
         
         self.renderer.screen.clear()
         self.renderer.render_map(
@@ -137,6 +146,7 @@ class Game:
         self._draw_panels()
         print("DEBUG: Display updated")
 
+
     def update_killed_counter(self):
         self.killed_enemies += 1
         self.health_panel.killed_enemies = self.killed_enemies
@@ -149,57 +159,59 @@ class Game:
             curses.curs_set(0)
 
     def _move_hero(self, dx, dy):
-        new_x, new_y = self.hero.x + dx, self.hero.y + dy
-        if (new_x, new_y) in self.map.walkable:
-            enemy = self._get_enemy_at(new_x, new_y)
-            if enemy:
-                self._handle_combat(enemy)
-                return
-            self.hero.x, self.hero.y = new_x, new_y
-            self._move_enemies()
-            self._update_interface()
-            print(f"DEBUG: Hero moved to ({new_x}, {new_y})")
+            new_x, new_y = self.hero.x + dx, self.hero.y + dy
+            if (new_x, new_y) in self.map.walkable:
+                enemy = self._get_enemy_at(new_x, new_y)
+                if enemy:
+                    self._handle_combat(enemy)
+                    return
+                self.hero.x, self.hero.y = new_x, new_y
+                self._update_display()  # Сначала обновляем видимость
+                self._move_enemies()  
+                print(f"DEBUG: Hero moved to ({new_x}, {new_y})")
 
     def _move_enemies(self):
-        """Обновляет позиции врагов только в зоне видимости"""
-        # Обновляем данные о видимости перед расчетом движения
-        self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
-        visible_entities = self.vision_system.get_visible_entities(
-            self.hero, self.map, self.enemies, self.items
-        )
-        visible_enemies = visible_entities['enemies']
-        
-        hero_pos = (self.hero.x, self.hero.y)
-        occupied = {hero_pos}
-
-        # Собираем занятые позиции ВИДИМЫХ врагов
-        for enemy in visible_enemies:
-            occupied.add((enemy.x, enemy.y))
-
-        # Перебираем всех врагов, но двигаем только видимых
-        for enemy in self.enemies:
-            if enemy.current_health <= 0:
-                continue
-                
-            # Пропускаем врагов вне поля зрения
-            if enemy not in visible_enemies:
-                continue
-                
-            dx, dy = self._calculate_enemy_move(enemy, hero_pos)
-            new_x = enemy.x + dx
-            new_y = enemy.y + dy
-
-            if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied:
-                if (new_x, new_y) == hero_pos:
-                    self._handle_combat(enemy)
-                    break
-                    
-                enemy.x = new_x
-                enemy.y = new_y
-                occupied.add((new_x, new_y))
-                
-                if (enemy.x, enemy.y) == hero_pos:
-                    self._handle_combat(enemy)
+         """Обновляет позиции врагов только в зоне видимости"""
+         # Обновляем данные о видимости перед расчетом движения
+         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
+         visible_entities = self.vision_system.get_visible_entities(
+             self.hero, self.map, self.enemies, self.items
+         )
+         visible_enemies = visible_entities['enemies']
+ 
+         # Теперь обрабатываем движение каждого врага
+         hero_pos = (self.hero.x, self.hero.y)
+         occupied = {hero_pos}
+ 
+         # Собираем занятые позиции ВИДИМЫХ врагов
+         for enemy in visible_enemies:
+             occupied.add((enemy.x, enemy.y))
+ 
+         # Перебираем всех врагов, но двигаем только видимых
+         for enemy in self.enemies:
+             if enemy.current_health <= 0:
+                 continue
+ 
+             # Пропускаем врагов вне поля зрения
+             if enemy not in visible_enemies:
+                 continue
+                 
+             dx, dy = self._calculate_enemy_move(enemy, hero_pos)
+             new_x = enemy.x + dx
+             new_y = enemy.y + dy
+             
+ 
+             if (new_x, new_y) in self.map.walkable and (new_x, new_y) not in occupied:
+                 if (new_x, new_y) == hero_pos:
+                     self._handle_combat(enemy)
+                     break
+                 enemy.x = new_x
+                 enemy.y = new_y
+                 occupied.add((new_x, new_y))
+ 
+                 # Проверяем, не наступили ли на игрока после перемещения
+                 if (enemy.x, enemy.y) == hero_pos:
+                     self._handle_combat(enemy)
 
     def _calculate_enemy_move(self, enemy, hero_pos):
         """Рассчитывает направление движения врага к игроку"""

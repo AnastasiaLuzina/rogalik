@@ -9,7 +9,7 @@ INTERACTION_HEIGHT = MAP_HEIGHT - HEALTH_HEIGHT - 1
 
 class HealthPanel:
     def __init__(self, x: int, y: int, width: int, height: int, 
-                 current_hp: int, max_hp: int, game=None):
+                 current_hp: int, max_hp: int, game=None, killed_enemies: int = 0, total_enemies: int = 0):
         self.x = x
         self.y = y
         self.width = width
@@ -17,6 +17,8 @@ class HealthPanel:
         self.current_hp = current_hp
         self.max_hp = max_hp
         self.game = game
+        self.killed_enemies = killed_enemies  # Убитые враги
+        self.total_enemies = total_enemies 
 
     def render(self, screen):
         try:
@@ -34,6 +36,21 @@ class HealthPanel:
             
             screen.addstr(self.y + 1, self.x + 1, hp_text.center(self.width-2))
             screen.addstr(self.y + 2, self.x + 1, health_bar, curses.color_pair(3))
+               
+               # Новая визуализация счетчика убитых врагов
+            enemy_icon = "💀"  # Символ черепа
+            enemy_count_text = f"{enemy_icon} {self.killed_enemies}/{self.total_enemies}"  # Дробь
+            formatted_text = enemy_count_text.ljust(self.width-2)
+            
+            # Анимация мигания при обновлении счетчика
+            if self.killed_enemies > 0:
+                color_pair = 4 if (self.killed_enemies % 2 == 0) else 5  # Чередуем цвета
+            else:
+                color_pair = 4
+                
+            screen.addstr(self.y + 4, self.x + 1, formatted_text, 
+                        curses.color_pair(color_pair) | curses.A_BOLD)
+
             
             # Отображение экипированного оружия
             if self.game and self.game.hero.inventory and self.game.hero.inventory.equipped_weapon:
