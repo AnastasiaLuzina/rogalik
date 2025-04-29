@@ -1,4 +1,4 @@
-from items import Sword, Bow, IceStaff, Shield, HealthPotion, PoisonPotion, Weapon
+from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
 
 class Inventory:
     def __init__(self, count_of_slots=8, game=None):

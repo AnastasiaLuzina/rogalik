@@ -36,31 +36,19 @@ class HealthPanel:
             
             screen.addstr(self.y + 1, self.x + 1, hp_text.center(self.width-2))
             screen.addstr(self.y + 2, self.x + 1, health_bar, curses.color_pair(3))
-               
-               # Новая визуализация счетчика убитых врагов
-            enemy_icon = "💀"  # Символ черепа
-            enemy_count_text = f"{enemy_icon} {self.killed_enemies}/{self.total_enemies}"  # Дробь
+            
+            enemy_icon = "💀"
+            enemy_count_text = f"{enemy_icon} {self.killed_enemies}/{self.total_enemies}"
             formatted_text = enemy_count_text.ljust(self.width-2)
             
-            # Анимация мигания при обновлении счетчика
-            if self.killed_enemies > 0:
-                color_pair = 4 if (self.killed_enemies % 2 == 0) else 5  # Чередуем цвета
-            else:
-                color_pair = 4
-                
+            color_pair = 4 if (self.killed_enemies % 2 == 0) else 5
             screen.addstr(self.y + 4, self.x + 1, formatted_text, 
                         curses.color_pair(color_pair) | curses.A_BOLD)
-
             
-            # Отображение экипированного оружия
-            if self.game and self.game.hero.inventory and self.game.hero.inventory.equipped_weapon:
-                weapon_text = f"Оружие: {self.game.hero.inventory.equipped_weapon.title}"
-            else:
-                weapon_text = "Оружие: Без оружия"
+            weapon_text = f"Оружие: {self.game.hero.inventory.equipped_weapon.title if self.game.hero.inventory.equipped_weapon else 'Без оружия'}"
             screen.addstr(self.y + 3, self.x + 1, weapon_text[:self.width-2], curses.color_pair(5))
-            print(f"DEBUG: Rendered HealthPanel, weapon: {weapon_text}")
-        except curses.error as e:
-            print(f"DEBUG: Curses error in HealthPanel.render: {e}")
+        except curses.error:
+            pass
 
 class InteractionPanel:
     def __init__(self, x: int, y: int, width: int, height: int):

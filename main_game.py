@@ -5,7 +5,7 @@ import curses
 import time
 from map import Map, MAP_WIDTH, MAP_HEIGHT
 from persons import Hero, Undead, Ghost, DarkMage
-from items import Sword, Bow, IceStaff, Shield, HealthPotion, PoisonPotion
+from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion
 from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT
 from map_render import Renderer
 from combat import CombatSystem
@@ -60,13 +60,12 @@ class Game:
         self.hero.y = hero_y
 
         item_templates = [
-            Sword("Меч", 20, '/', 50),
-            Bow("Лук", 15, ')', 5, 30),
-            IceStaff("Ледяной посох", 25, '*', 3, 50),
-            Shield("Щит", 10, '0', 20),
-            HealthPotion("Зелье здоровья", 30, 'H'),
-            PoisonPotion("Ядовитое зелье", 5, 'P', 3)
-        ]
+                Sword("Меч", 20, '/', 50),
+                Bow("Лук", 15, ')', 5, 30),
+                IceStaff("Ледяной посох", 25, '*', 3, 50),
+                HealthPotion("Зелье здоровья", 30, 'H'),
+                PoisonPotion("Ядовитое зелье", 5, 'P', 3)
+            ]
 
         items_to_place = []
         for item in item_templates:
@@ -78,8 +77,6 @@ class Game:
                     new_item = Bow(item.title, item.damage, item.symbol, item.range, item.durability)
                 elif isinstance(item, IceStaff):
                     new_item = IceStaff(item.title, item.damage, item.symbol, item.range, item.durability)
-                elif isinstance(item, Shield):
-                    new_item = Shield(item.title, item.save_from_damage, item.symbol, item.durability)
                 elif isinstance(item, HealthPotion):
                     new_item = HealthPotion(item.title, item.heal_amount, item.symbol)
                 elif isinstance(item, PoisonPotion):

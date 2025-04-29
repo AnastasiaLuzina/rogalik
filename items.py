@@ -6,7 +6,7 @@ class Items:
         self.type = type
         self.symbol = symbol
     
-    def _break_and_remove(self, inventory: 'Inventory'):
+    def _break_and_remove(self, inventory):
         """Удаляет сломанный предмет и обновляет интерфейс"""
         if inventory and getattr(self, 'durability', 1) <= 0:
             # Удаляем все копии предмета из инвентаря
@@ -30,7 +30,7 @@ class Weapon(Items):
         self.durability = durability
         self.max_durability = durability
         
-    def use(self, inventory: 'Inventory' = None) -> int:
+    def use(self, inventory) -> int:
         if self.durability > 0:
             self.durability -= 1
             self._break_and_remove(inventory)
@@ -42,7 +42,7 @@ class Sword(Weapon):
         super().__init__(title, "melee", symbol, damage, durability)
         self.combo_counter = 0
         
-    def use(self, inventory: 'Inventory' = None) -> int:
+    def use(self, inventory) -> int:
         damage = super().use(inventory)
         self.combo_counter += 1
         if self.combo_counter % 3 == 0:
@@ -54,7 +54,7 @@ class Bow(Weapon):
         super().__init__(title, "ranged", symbol, damage, durability)
         self.range = range
         
-    def use(self, inventory: 'Inventory' = None) -> int:
+    def use(self, inventory) -> int:
         damage = super().use(inventory)
         if random.random() < 0.25:
             return int(damage * 1.5)
@@ -66,27 +66,12 @@ class IceStaff(Weapon):
         self.combo_counter = 0
         self.range = range
     
-    def use(self, inventory: 'Inventory' = None) -> int:
+    def use(self, inventory) -> int:
         damage = super().use(inventory)
         self.combo_counter += 1
         if self.combo_counter % 3 == 0:
             return damage * 3
         return damage
-
-class Shield(Items):
-    def __init__(self, title: str, save_from_damage: int, symbol: str, durability: int = 20):
-        super().__init__(title, "armor", symbol)
-        self.save_from_damage = save_from_damage
-        self.durability = durability
-        self.max_durability = durability
-        
-    def block(self, damage: int, inventory: 'Inventory' = None) -> int:
-        if self.durability <= 0:
-            return damage
-        blocked = min(damage, self.save_from_damage)
-        self.durability -= 1
-        self._break_and_remove(inventory)
-        return damage - blocked
 
 class HealthPotion(Items):
     def __init__(self, title: str, heal_amount: int, symbol: str, durability: int = 1):
@@ -95,7 +80,7 @@ class HealthPotion(Items):
         self.durability = durability
         self.max_durability = durability
 
-    def use(self, target, inventory: 'Inventory' = None) -> int:
+    def use(self, target, inventory) -> int:
         if self.durability <= 0:
             return 0
             
@@ -113,7 +98,7 @@ class PoisonPotion(Items):
         self.durability = durability
         self.max_durability = durability
 
-    def use(self, target, inventory: 'Inventory' = None) -> int:
+    def use(self, target, inventory) -> int:
         if self.durability <= 0:
             return 0
             
