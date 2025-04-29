@@ -60,9 +60,9 @@ class Game:
         self.hero.y = hero_y
 
         item_templates = [
-                Sword("Меч", 20, '/', 50),
-                Bow("Лук", 15, ')', 5, 30),
-                IceStaff("Ледяной посох", 25, '*', 3, 50),
+                Sword("Меч", 20, '/'),
+                Bow("Лук", 15, ')'),
+                IceStaff("Ледяной посох", 25, '*'),
                 HealthPotion("Зелье здоровья", 30, 'H'),
                 PoisonPotion("Ядовитое зелье", 5, 'P', 3)
             ]
@@ -72,11 +72,11 @@ class Game:
             count = random.randint(1, 3)
             for _ in range(count):
                 if isinstance(item, Sword):
-                    new_item = Sword(item.title, item.damage, item.symbol, item.durability)
+                    new_item = Sword(item.title, item.damage, item.symbol)
                 elif isinstance(item, Bow):
-                    new_item = Bow(item.title, item.damage, item.symbol, item.range, item.durability)
+                    new_item = Bow(item.title, item.damage, item.symbol)
                 elif isinstance(item, IceStaff):
-                    new_item = IceStaff(item.title, item.damage, item.symbol, item.range, item.durability)
+                    new_item = IceStaff(item.title, item.damage, item.symbol)
                 elif isinstance(item, HealthPotion):
                     new_item = HealthPotion(item.title, item.heal_amount, item.symbol)
                 elif isinstance(item, PoisonPotion):
