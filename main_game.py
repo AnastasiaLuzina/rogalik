@@ -159,16 +159,17 @@ class Game:
             curses.curs_set(0)
 
     def _move_hero(self, dx, dy):
-            new_x, new_y = self.hero.x + dx, self.hero.y + dy
-            if (new_x, new_y) in self.map.walkable:
-                enemy = self._get_enemy_at(new_x, new_y)
-                if enemy:
-                    self._handle_combat(enemy)
-                    return
-                self.hero.x, self.hero.y = new_x, new_y
-                self._update_display()  # Сначала обновляем видимость
-                self._move_enemies()  
-                print(f"DEBUG: Hero moved to ({new_x}, {new_y})")
+        new_x, new_y = self.hero.x + dx, self.hero.y + dy
+        if (new_x, new_y) in self.map.walkable:
+            enemy = self._get_enemy_at(new_x, new_y)
+            if enemy:
+                self._handle_combat(enemy)
+                return
+            self.hero.x, self.hero.y = new_x, new_y
+            self.check_item_interaction()  # Проверяем предметы после движения
+            self._update_display()
+            self._move_enemies()
+
 
     def _move_enemies(self):
          """Обновляет позиции врагов только в зоне видимости"""
@@ -249,18 +250,21 @@ class Game:
 
     def _update_interface(self):
         self._sync_health()
-        has_items = self.check_item_interaction()
+        has_items = self.check_item_interaction()  # Всегда проверяем предметы вокруг
+        
         if self.inventory.is_open:
             self._draw_inventory()
         else:
             self._update_display()
-        if self.nearby_items:
+        
+        # Всегда обновляем кнопку подбора, если есть предметы рядом
+        if has_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
         else:
             self.interaction_panel.hide_pickup_button()
-        self._draw_panels()  # Явно перерисовываем панели
-        self.renderer.screen.refresh()  # Обновляем экран
-        print(f"DEBUG: Interface updated, messages in InteractionPanel: {self.interaction_panel.messages}")
+        
+        self._draw_panels()
+        self.renderer.screen.refresh()
 
     def _draw_inventory(self):
         self.interaction_panel.show_inventory(
@@ -292,7 +296,7 @@ class Game:
         if key == ord('\t'):
             self.inventory.toggle()
         elif key == ord('f') or key == ord('F'):
-            self.handle_pickup()
+            self.handle_pickup()  # Это должно работать независимо от инвентаря
         elif key in (ord('w'), ord('W'), ord('a'), ord('A'), ord('s'), ord('S'), ord('d'), ord('D')):
             dx = 1 if key in (ord('d'), ord('D')) else -1 if key in (ord('a'), ord('A')) else 0
             dy = 1 if key in (ord('s'), ord('S')) else -1 if key in (ord('w'), ord('W')) else 0
@@ -316,15 +320,26 @@ class Game:
     def check_item_interaction(self):
         self.nearby_items = []
         hero_x, hero_y = self.hero.x, self.hero.y
-        for item in self.items:
-            x, y, item_obj = item
-            if (abs(hero_x - x) <= 1 and hero_y == y) or (abs(hero_y - y) <= 1 and hero_x == x):
-                self.nearby_items.append(item)
+        
+        # Проверяем все 8 соседних клеток (включая диагонали)
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                if dx == 0 and dy == 0:  # Пропускаем позицию героя
+                    continue
+                    
+                x, y = hero_x + dx, hero_y + dy
+                for item in self.items:
+                    if item[0] == x and item[1] == y:
+                        self.nearby_items.append(item)
+                        break  # Не добавляем дубликаты
+        
+        # Обновляем кнопку подбора
         if self.nearby_items:
             self.interaction_panel.show_pickup_button(len(self.nearby_items))
         else:
             self.interaction_panel.hide_pickup_button()
-        print(f"DEBUG: Nearby items: {len(self.nearby_items)}, items: {[item[2].title for item in self.nearby_items]}")
+        
+        print(f"DEBUG: Found {len(self.nearby_items)} nearby items at positions: {[(i[0],i[1]) for i in self.nearby_items]}")
         return len(self.nearby_items) > 0
 
     def handle_pickup(self):
@@ -333,7 +348,7 @@ class Game:
             return
         
         picked_items = []
-        for item in self.nearby_items[:]:
+        for item in self.nearby_items[:]:  # Используем копию списка для безопасного удаления
             x, y, item_obj = item
             if self.inventory.add_item(item_obj):
                 self.items.remove(item)
@@ -341,7 +356,7 @@ class Game:
         
         if picked_items:
             message = f"Подобрано: {', '.join(picked_items)}"
-            self.interaction_panel.add_message(message)
+            self.interaction_panel.add_message(message)  # Сообщение добавляется только здесь
             self.nearby_items.clear()
             self._update_interface()
             print(f"DEBUG: Picked up items: {picked_items}")

@@ -23,12 +23,8 @@ class Inventory:
         for slot in range(1, self.count_of_slots + 1):
             if slot not in self.items:
                 self.items[slot] = item
-                if self.game:
-                    self.game.interaction_panel.add_message(f"Подобран предмет: {item.title}")
                 print(f"DEBUG: Added item '{item.title}' to slot {slot}")
                 return True
-        if self.game:
-            self.game.interaction_panel.add_message("Инвентарь полон!")
         print("DEBUG: Inventory full")
         return False
 

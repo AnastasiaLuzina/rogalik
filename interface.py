@@ -96,13 +96,15 @@ class InteractionPanel:
         print(f"DEBUG: Showing inventory, active slot: {active_slot}, equipped: {equipped_weapon.title if equipped_weapon else 'None'}")
 
     def show_pickup_button(self, count):
-        self.messages = [f"[F] Подобрать ({count} предметов)"]
-        print(f"DEBUG: Showing pickup button for {count} items")
+        # Очищаем только если предыдущее сообщение было о подборе
+        if self.messages and "[F] Подобрать" in self.messages[0]:
+            self.messages = []
+        self.messages.insert(0, f"[F] Подобрать ({count})")  # Добавляем в начало
 
     def hide_pickup_button(self):
+        # Удаляем только кнопку подбора, если она есть
         if self.messages and "[F] Подобрать" in self.messages[0]:
-            self.messages.clear()
-        print("DEBUG: Hiding pickup button")
+            self.messages.pop(0)
             
     def render(self, screen):
         try:
