@@ -29,7 +29,14 @@ class Inventory:
         return False
 
     def change_slot(self, direction: int):
-        new_slot = (self.active_slot + direction - 1) % self.count_of_slots + 1
+        """Изменяет активный слот. 
+           direction: -1 (вверх/W), 1 (вниз/S)"""
+        new_slot = self.active_slot
+        if direction == -1:  # Вверх (W)
+            new_slot = self.active_slot - 1 if self.active_slot > 1 else self.count_of_slots
+        elif direction == 1:  # Вниз (S)
+            new_slot = self.active_slot + 1 if self.active_slot < self.count_of_slots else 1
+            
         self.active_slot = new_slot
         print(f"DEBUG: Changed active slot to {self.active_slot}")
         if self.game:

@@ -247,18 +247,16 @@ class Game:
 
     def _update_interface(self):
         self._sync_health()
-        has_items = self.check_item_interaction()  # Всегда проверяем предметы вокруг
+        has_items = self.check_item_interaction()
         
         if self.inventory.is_open:
             self._draw_inventory()
         else:
             self._update_display()
         
-        # Всегда обновляем кнопку подбора, если есть предметы рядом
-        if has_items:
-            self.interaction_panel.show_pickup_button(len(self.nearby_items))
-        else:
-            self.interaction_panel.hide_pickup_button()
+        # Теперь кнопка будет показываться просто "[F] Подобрать"
+        self._draw_panels()
+        self.renderer.screen.refresh()
         
         self._draw_panels()
         self.renderer.screen.refresh()
@@ -275,9 +273,9 @@ class Game:
     def _handle_key_press(self, key):
         print(f"DEBUG: Key pressed: {key}")
         if self.inventory.is_open:
-            if key == curses.KEY_LEFT or key == ord('a') or key == ord('A'):
+            if key == ord('w') or key == ord('W'):  # Вверх
                 self.inventory.change_slot(-1)
-            elif key == curses.KEY_RIGHT or key == ord('d') or key == ord('D'):
+            elif key == ord('s') or key == ord('S'):  # Вниз
                 self.inventory.change_slot(1)
             elif key == ord('e') or key == ord('E'):
                 self.inventory.use_active_item()
@@ -318,25 +316,22 @@ class Game:
         self.nearby_items = []
         hero_x, hero_y = self.hero.x, self.hero.y
         
-        # Проверяем все 8 соседних клеток (включая диагонали)
         for dx in [-1, 0, 1]:
             for dy in [-1, 0, 1]:
-                if dx == 0 and dy == 0:  # Пропускаем позицию героя
+                if dx == 0 and dy == 0:
                     continue
-                    
                 x, y = hero_x + dx, hero_y + dy
                 for item in self.items:
                     if item[0] == x and item[1] == y:
                         self.nearby_items.append(item)
-                        break  # Не добавляем дубликаты
+                        break
         
-        # Обновляем кнопку подбора
+        # Упрощаем логику показа кнопки
         if self.nearby_items:
-            self.interaction_panel.show_pickup_button(len(self.nearby_items))
+            self.interaction_panel.show_pickup_button()
         else:
             self.interaction_panel.hide_pickup_button()
         
-        print(f"DEBUG: Found {len(self.nearby_items)} nearby items at positions: {[(i[0],i[1]) for i in self.nearby_items]}")
         return len(self.nearby_items) > 0
 
     def handle_pickup(self):

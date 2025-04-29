@@ -20,6 +20,7 @@ class HealthPanel:
         self.killed_enemies = killed_enemies  # Убитые враги
         self.total_enemies = total_enemies 
 
+
     def render(self, screen):
         try:
             screen.addstr(self.y, self.x, '╔' + '═'*(self.width-2) + '╗')
@@ -80,17 +81,18 @@ class InteractionPanel:
             text = f"{prefix}Слот {slot}: {item.title + equipped if item else 'Пусто'}"
             self.messages.append((text, color))
         
-        self.messages.append(("[E] Использовать  [R] Выбросить  [U] Снять экипировку", curses.color_pair(5)))
-        print(f"DEBUG: Showing inventory, active slot: {active_slot}, equipped: {equipped_weapon.title if equipped_weapon else 'None'}")
+        # Первая строка с кнопками
+        self.messages.append(("[E] Использовать  [R] Выбросить", curses.color_pair(5)))
+        # Вторая строка с кнопкой [U]
+        self.messages.append(("[U] Снять экипировку", curses.color_pair(5)))
 
-    def show_pickup_button(self, count):
-        # Очищаем только если предыдущее сообщение было о подборе
-        if self.messages and "[F] Подобрать" in self.messages[0]:
-            self.messages = []
-        self.messages.insert(0, f"[F] Подобрать ({count})")  # Добавляем в начало
+    def show_pickup_button(self):
+        # Убираем проверку на предыдущее сообщение и количество предметов
+        if not self.messages or "[F] Подобрать" not in self.messages[0]:
+            self.messages.insert(0, "[F] Подобрать")
 
     def hide_pickup_button(self):
-        # Удаляем только кнопку подбора, если она есть
+        # Упрощаем удаление кнопки
         if self.messages and "[F] Подобрать" in self.messages[0]:
             self.messages.pop(0)
             
