@@ -55,20 +55,25 @@ class Game:
         self._place_hero_and_entities()
         self._draw_initial_map()
 
+    # В методе _place_hero_and_entities:
     def _place_hero_and_entities(self):
         hero_room = random.choice(self.map.rooms)
         hero_x = random.randint(hero_room['x1'], hero_room['x2'])
         hero_y = random.randint(hero_room['y1'], hero_room['y2'])
         self.hero.x = hero_x
         self.hero.y = hero_y
+        
+        # Удаляем преждевременное обновление видимости
+        # self.vision_system.update_vision(self.hero, self.map, [], [])
 
+        # Остальной код размещения предметов и врагов остается без изменений
         item_templates = [
-                Sword("Меч", 20, '/'),
-                Bow("Лук", 15, ')'),
-                IceStaff("Ледяной посох", 25, '*'),
-                HealthPotion("Зелье здоровья", 30, 'H'),
-                PoisonPotion("Ядовитое зелье", 5, 'P', 3)
-            ]
+            Sword("Меч", 20, '/'),
+            Bow("Лук", 15, ')'),
+            IceStaff("Ледяной посох", 25, '*'),
+            HealthPotion("Зелье здоровья", 30, 'H'),
+            PoisonPotion("Ядовитое зелье", 5, 'P', 3)
+        ]
 
         items_to_place = []
         for item in item_templates:
@@ -87,29 +92,43 @@ class Game:
                 items_to_place.append(new_item)
 
         for room in self.map.rooms:
-                if room != hero_room:
-                    num_enemies = random.randint(0, 1)
-                    self.total_enemies += num_enemies  # Обновляем общее количество врагов
-                    for _ in range(num_enemies):
-                        enemy_type = random.choice([Undead, Ghost, DarkMage])
-                        x = random.randint(room['x1'], room['x2'])
-                        y = random.randint(room['y1'], room['y2'])
-                        self.enemies.append(enemy_type(x, y))
+            if room != hero_room:
+                num_enemies = random.randint(0, 1)
+                self.total_enemies += num_enemies
+                for _ in range(num_enemies):
+                    enemy_type = random.choice([Undead, Ghost, DarkMage])
+                    x = random.randint(room['x1'], room['x2'])
+                    y = random.randint(room['y1'], room['y2'])
+                    self.enemies.append(enemy_type(x, y))
 
-                    if items_to_place:
-                        item = items_to_place.pop()
-                        x = random.randint(room['x1'], room['x2'])
-                        y = random.randint(room['y1'], room['y2'])
-                        self.items.append((x, y, item))
+                if items_to_place:
+                    item = items_to_place.pop()
+                    x = random.randint(room['x1'], room['x2'])
+                    y = random.randint(room['y1'], room['y2'])
+                    self.items.append((x, y, item))
 
         self.health_panel.total_enemies = self.total_enemies
-
         print(f"DEBUG: Placed {len(self.enemies)} enemies, {len(self.items)} items")
 
     def _draw_initial_map(self):
+        if self.game_state != "playing":
+            print(f"DEBUG: Skipping map draw, game_state is {self.game_state}")
+            return
+        
+        max_y, max_x = self.renderer.screen.getmaxyx()
+        if max_y < MAP_HEIGHT + 2 or max_x < MAP_WIDTH + PANEL_WIDTH:
+            self.renderer.screen.clear()
+            self.renderer.screen.addstr(0, 0, "Увеличьте размер терминала!", curses.color_pair(3))
+            self.renderer.screen.refresh()
+            return
+        
+        self.vision_system.reset()
+        print("DEBUG: Vision system reset")
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
         visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
         
+        self.renderer.screen.clear()
+        print("DEBUG: Screen cleared")
         self.renderer.render_map(
             self.map,
             self.hero,
@@ -118,9 +137,12 @@ class Game:
             self.vision_system,
             force_redraw=True
         )
+        print("DEBUG: Map rendered")
         self._draw_panels()
+        print("DEBUG: Panels drawn")
         self.renderer.screen.refresh()
-        print("DEBUG: Initial map drawn")
+        print("DEBUG: Screen refreshed")
+        time.sleep(0.1)  # Небольшая задержка для стабильности
 
     def _draw_panels(self):
         self.health_panel.render(self.renderer.screen)  # Изменено здесь
@@ -358,69 +380,76 @@ class Game:
             key = self.renderer.screen.getch()
             if key == ord('s') or key == ord('S'):
                 self.game_state = "playing"
-                self._place_hero_and_entities()  # Инициализация новой игры
-                self._draw_initial_map()
+                self.vision_system.reset()  # Сбрасываем состояние видимости
+                self._place_hero_and_entities()  # Размещаем героя и объекты
+                self._draw_initial_map()  # Рисуем карту
                 break
             elif key == ord('q') or key == ord('Q'):
                 exit()
 
     def show_death_screen(self):
         """Отображает экран смерти и обрабатывает ввод."""
+        print("DEBUG: Entering show_death_screen")
         self.death_screen.show()
+        self.renderer.screen.refresh()
+        
         while True:
             key = self.renderer.screen.getch()
             if key == ord('r') or key == ord('R'):
-                self.reset_game()  # Перезапуск игры
+                print("DEBUG: Reset requested")
+                self.reset_game()
                 self.game_state = "playing"
+                self.game_over = False  # Важно сбросить этот флаг
+                self._draw_initial_map()
+                self._update_interface()  # <-- Добавьте этот вызов!
                 break
             elif key == ord('q') or key == ord('Q'):
                 exit()
 
     def reset_game(self):
         """Сбрасывает игру к начальному состоянию."""
+        print("DEBUG: Resetting game state")
         self.hero.current_health = self.hero.max_health
+        self.game_over = False  # Сбрасываем флаг завершения игры
         self.enemies.clear()
         self.items.clear()
         self.killed_enemies = 0
         self.total_enemies = 0
+        self.health_panel.killed_enemies = 0  # <-- добавьте эту строку
+        self.nearby_items.clear()
+        self.interaction_panel.messages.clear()
         self.inventory.clear()
+        self.map = Map(MAP_WIDTH, MAP_HEIGHT)
+        self.vision_system.reset()
         self._place_hero_and_entities()
-        self._draw_initial_map()
+        print("DEBUG: Game reset complete")
 
     def run(self):
         try:
             while True:
+                print(f"DEBUG: Game loop, state: {self.game_state}")
                 if self.game_state == "start":
                     self.show_start_screen()
                 elif self.game_state == "playing":
-                    self.play_game()
-                    # Проверяем, не завершилась ли игра (герой умер)
-                    if self.game_over:
-                        self.game_state = "death"
+                    self.play_game()  # Этот метод теперь будет обрабатывать игровой цикл
                 elif self.game_state == "death":
                     self.show_death_screen()
-            
-                # Обработка ввода в игровом состоянии
-                if self.game_state == "playing":
-                    try:
-                        key = self.renderer.screen.getch()
-                        if key != -1:
-                            self._handle_key_press(key)
-                    except curses.error:
-                        pass
         finally:
             self.renderer.close_screen()
 
     def play_game(self):
         """Основной игровой цикл."""
+        self.game_over = False  # Сбрасываем флаг game_over при каждом новом запуске игры
         while not self.game_over:
             try:
                 key = self.renderer.screen.getch()
                 if key != -1:
                     self._handle_key_press(key)
             except curses.error as e:
-                print(f"DEBUG: Curses error in run: {e}")
-        self.game_state = "death"  # Переход на экран смерти при game_over
+                print(f"DEBUG: Curses error in play_game: {e}")
+        
+        # После выхода из цикла (когда game_over = True) переключаем состояние на экран смерти
+        self.game_state = "death"
             
 if __name__ == "__main__":
     game = Game()

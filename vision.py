@@ -11,6 +11,7 @@ class VisionSystem:
         self.explored_tiles: Set[Tuple[int, int]] = set()
         self.last_hero_pos: Tuple[int, int] = (-1, -1)
 
+
     def update_vision(self, hero: Hero, map: Map, enemies: List[Enemy], items: List[Tuple[int, int, Items]]) -> Dict[str, Set[Tuple[int, int]]]:
         """
         Updates visible and explored tiles based on hero's position.
@@ -94,3 +95,9 @@ class VisionSystem:
 
     def is_explored(self, x: int, y: int) -> bool:
         return (x, y) in self.explored_tiles
+    
+    def reset(self):
+       
+        self.visible_tiles.clear()
+        self.explored_tiles.clear()
+        self.last_hero_pos = (-1, -1)

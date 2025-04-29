@@ -68,10 +68,12 @@ class Renderer:
 
         for y in range(map.height):
             for x in range(map.width):
+                # Пропускаем тайлы, которые не видны и не исследованы
                 if vision_system and not (vision_system.is_visible(x, y) or vision_system.is_explored(x, y)):
                     self.screen.addch(y, x, ord(' '))
                     continue
 
+                # Отрисовываем только если клетка изменилась или требуется полная перерисовка
                 if force_redraw or self.is_cell_changed(x, y, hero, enemies, items):
                     self.draw_cell(map, x, y, hero, enemies, items, vision_system)
 
@@ -81,7 +83,7 @@ class Renderer:
         buttons = f"{inventory_button}  {movement_hint}"
         self.screen.addstr(map.height, 0, buttons, curses.color_pair(5))
         self.screen.refresh()
-
+        
     def draw_cell(self, map: Map, x: int, y: int, hero: Hero, enemies: list, items: list, vision_system=None) -> None:
         if not self.screen:
             return

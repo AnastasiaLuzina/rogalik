@@ -97,3 +97,14 @@ class Inventory:
         item = self.items.get(self.active_slot)
         print(f"DEBUG: Active item is {item.title if item else 'None'}")
         return item
+    
+    def clear(self):
+        """Очищает инвентарь, сбрасывает активный слот и снимает экипированное оружие."""
+        self.items.clear()
+        self.active_slot = 1
+        self.equipped_weapon = None
+        self.is_open = False
+        print("DEBUG: Inventory cleared")
+        if self.game:
+            self.game.interaction_panel.messages.clear()  # Очищаем сообщения в панели взаимодействия
+            self.game._update_interface()
