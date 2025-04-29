@@ -8,6 +8,7 @@ class Items:
     
     def _break_and_remove(self, inventory, suppress_update=False):
         if inventory:
+            print(f"DEBUG: Attempting to remove {self.title} from inventory: {inventory.items}")
             removed = False
             for slot in list(inventory.items.keys()):
                 if inventory.items[slot] == self:
@@ -33,33 +34,33 @@ class Weapon(Items):
 class Sword(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "melee", symbol, damage)
-        self.double_strike_chance = 0.2 
+        self.double_strike_chance = 0.2  # 20% шанс на двойной удар
         
     def use(self, inventory) -> int:
         if random.random() < self.double_strike_chance:
-            return self.damage * 2 
+            return self.damage * 2  # Двойной удар
         return self.damage
 
 class Bow(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "ranged", symbol, damage)
-        self.critical_shot_chance = 0.4 
+        self.critical_shot_chance = 0.25  # 25% шанс на точный выстрел
         
     def use(self, inventory) -> int:
         if random.random() < self.critical_shot_chance:
-            return int(self.damage * 1.5)  
+            return int(self.damage * 1.5)  # Точный выстрел
         return self.damage
     
 class IceStaff(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "magic", symbol, damage)
-        self.freeze_chance = 0.2  
-        self.freeze_duration = 3 
+        self.freeze_chance = 0.15  # 15% шанс на заморозку
+        self.freeze_duration = 3  # Заморозка на 3 хода
     
     def use(self, inventory) -> tuple:
         if random.random() < self.freeze_chance:
-            return (self.damage, self.freeze_duration) 
-        return (self.damage, 0)
+            return (self.damage, self.freeze_duration)  # Урон и заморозка
+        return (self.damage, 0)  # Только урон
 
 class HealthPotion(Items):
     def __init__(self, title: str, heal_amount: int, symbol: str):
@@ -78,4 +79,5 @@ class PoisonPotion(Items):
         self.duration = duration
 
     def use(self, target, inventory) -> tuple:
-        return (0, self.damage_per_turn, self.duration) 
+        # Возвращаем начальный урон и параметры для эффекта яда
+        return (0, self.damage_per_turn, self.duration)  # Начальный урон 0, урон в ход, длительность

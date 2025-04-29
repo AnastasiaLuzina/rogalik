@@ -6,7 +6,7 @@ import time
 from map import Map, MAP_WIDTH, MAP_HEIGHT
 from persons import Hero, Undead, Ghost, DarkMage
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion
-from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT
+from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT, DeathScreen, StartScreen
 from map_render import Renderer
 from combat import CombatSystem
 from vision import VisionSystem
@@ -33,6 +33,7 @@ class Game:
         self.killed_enemies = 0 
         self.total_enemies = 0
         self.nearby_items = []
+        self.game_state = "start" 
         
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
@@ -40,7 +41,7 @@ class Game:
             current_hp=self.hero.current_health,
             max_hp=self.hero.max_health,
             game=self,
-            killed_enemies=self.killed_enemies,
+            killed_enemies=self.killed_enemies,  # <-- Здесь была пропущена запятая
             total_enemies=self.total_enemies
         )
         
@@ -49,23 +50,30 @@ class Game:
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
         )
         
+        self.start_screen = StartScreen(self.renderer.screen)
+        self.death_screen = DeathScreen(self.renderer.screen)
         self._place_hero_and_entities()
         self._draw_initial_map()
 
+    # В методе _place_hero_and_entities:
     def _place_hero_and_entities(self):
         hero_room = random.choice(self.map.rooms)
         hero_x = random.randint(hero_room['x1'], hero_room['x2'])
         hero_y = random.randint(hero_room['y1'], hero_room['y2'])
         self.hero.x = hero_x
         self.hero.y = hero_y
+        
+        # Удаляем преждевременное обновление видимости
+        # self.vision_system.update_vision(self.hero, self.map, [], [])
 
+        # Остальной код размещения предметов и врагов остается без изменений
         item_templates = [
-                Sword("Меч", 20, '/'),
-                Bow("Лук", 15, ')'),
-                IceStaff("Ледяной посох", 25, '*'),
-                HealthPotion("Зелье здоровья", 30, 'H'),
-                PoisonPotion("Ядовитое зелье", 5, 'P', 3)
-            ]
+            Sword("Меч", 20, '/'),
+            Bow("Лук", 15, ')'),
+            IceStaff("Ледяной посох", 25, '*'),
+            HealthPotion("Зелье здоровья", 30, 'H'),
+            PoisonPotion("Ядовитое зелье", 5, 'P', 3)
+        ]
 
         items_to_place = []
         for item in item_templates:
@@ -84,27 +92,43 @@ class Game:
                 items_to_place.append(new_item)
 
         for room in self.map.rooms:
-                if room != hero_room:
-                    num_enemies = random.randint(0, 1)
-                    self.total_enemies += num_enemies
-                    for _ in range(num_enemies):
-                        enemy_type = random.choice([Undead, Ghost, DarkMage])
-                        x = random.randint(room['x1'], room['x2'])
-                        y = random.randint(room['y1'], room['y2'])
-                        self.enemies.append(enemy_type(x, y))
+            if room != hero_room:
+                num_enemies = random.randint(0, 1)
+                self.total_enemies += num_enemies
+                for _ in range(num_enemies):
+                    enemy_type = random.choice([Undead, Ghost, DarkMage])
+                    x = random.randint(room['x1'], room['x2'])
+                    y = random.randint(room['y1'], room['y2'])
+                    self.enemies.append(enemy_type(x, y))
 
-                    if items_to_place:
-                        item = items_to_place.pop()
-                        x = random.randint(room['x1'], room['x2'])
-                        y = random.randint(room['y1'], room['y2'])
-                        self.items.append((x, y, item))
+                if items_to_place:
+                    item = items_to_place.pop()
+                    x = random.randint(room['x1'], room['x2'])
+                    y = random.randint(room['y1'], room['y2'])
+                    self.items.append((x, y, item))
 
         self.health_panel.total_enemies = self.total_enemies
+        print(f"DEBUG: Placed {len(self.enemies)} enemies, {len(self.items)} items")
 
     def _draw_initial_map(self):
+        if self.game_state != "playing":
+            print(f"DEBUG: Skipping map draw, game_state is {self.game_state}")
+            return
+        
+        max_y, max_x = self.renderer.screen.getmaxyx()
+        if max_y < MAP_HEIGHT + 2 or max_x < MAP_WIDTH + PANEL_WIDTH:
+            self.renderer.screen.clear()
+            self.renderer.screen.addstr(0, 0, "Увеличьте размер терминала!", curses.color_pair(3))
+            self.renderer.screen.refresh()
+            return
+        
+        self.vision_system.reset()
+        print("DEBUG: Vision system reset")
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
         visible_entities = self.vision_system.get_visible_entities(self.hero, self.map, self.enemies, self.items)
         
+        self.renderer.screen.clear()
+        print("DEBUG: Screen cleared")
         self.renderer.render_map(
             self.map,
             self.hero,
@@ -113,12 +137,17 @@ class Game:
             self.vision_system,
             force_redraw=True
         )
+        print("DEBUG: Map rendered")
         self._draw_panels()
+        print("DEBUG: Panels drawn")
         self.renderer.screen.refresh()
+        print("DEBUG: Screen refreshed")
+        time.sleep(0.1)  # Небольшая задержка для стабильности
 
     def _draw_panels(self):
-        self.health_panel.render(self.renderer.screen)
-        self.interaction_panel.render(self.renderer.screen)
+        self.health_panel.render(self.renderer.screen)  # Изменено здесь
+        self.interaction_panel.render(self.renderer.screen)  # И здесь
+        print("DEBUG: Panels drawn, InteractionPanel messages: ", self.interaction_panel.messages)
 
     def _update_display(self):
         self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
@@ -126,6 +155,7 @@ class Game:
              self.hero, self.map, self.enemies, self.items
          )
  
+        
         self.renderer.screen.clear()
         self.renderer.render_map(
             self.map,
@@ -136,6 +166,8 @@ class Game:
             force_redraw=True
         )
         self._draw_panels()
+        print("DEBUG: Display updated")
+
 
     def update_killed_counter(self):
         self.killed_enemies += 1
@@ -151,26 +183,34 @@ class Game:
                 self._handle_combat(enemy)
                 return
             self.hero.x, self.hero.y = new_x, new_y
-            self.check_item_interaction() 
+            self.check_item_interaction()  # Проверяем предметы после движения
             self._update_display()
             self._move_enemies()
 
+
     def _move_enemies(self):
+         """Обновляет позиции врагов только в зоне видимости"""
+         # Обновляем данные о видимости перед расчетом движения
          self.vision_system.update_vision(self.hero, self.map, self.enemies, self.items)
          visible_entities = self.vision_system.get_visible_entities(
              self.hero, self.map, self.enemies, self.items
          )
          visible_enemies = visible_entities['enemies']
+ 
+         # Теперь обрабатываем движение каждого врага
          hero_pos = (self.hero.x, self.hero.y)
          occupied = {hero_pos}
-
+ 
+         # Собираем занятые позиции ВИДИМЫХ врагов
          for enemy in visible_enemies:
              occupied.add((enemy.x, enemy.y))
  
+         # Перебираем всех врагов, но двигаем только видимых
          for enemy in self.enemies:
              if enemy.current_health <= 0:
                  continue
-             
+ 
+             # Пропускаем врагов вне поля зрения
              if enemy not in visible_enemies:
                  continue
                  
@@ -187,13 +227,16 @@ class Game:
                  enemy.y = new_y
                  occupied.add((new_x, new_y))
  
+                 # Проверяем, не наступили ли на игрока после перемещения
                  if (enemy.x, enemy.y) == hero_pos:
                      self._handle_combat(enemy)
 
     def _calculate_enemy_move(self, enemy, hero_pos):
+        """Рассчитывает направление движения врага к игроку"""
         hx, hy = hero_pos
         ex, ey = enemy.x, enemy.y
         
+        # Определяем направление движения
         dx = 0
         if hx > ex:
             dx = 1
@@ -206,6 +249,7 @@ class Game:
         elif hy < ey:
             dy = -1
             
+        # Случайный выбор направления при равных условиях
         if random.random() < 0.5:
             return (dx, 0) if dx != 0 else (0, dy)
         else:
@@ -219,6 +263,7 @@ class Game:
 
     def _sync_health(self):
         self.health_panel.current_hp = self.hero.current_health
+        print(f"DEBUG: Health synced: {self.hero.current_health}/{self.hero.max_health}")
 
     def _update_interface(self):
         self._sync_health()
@@ -229,6 +274,7 @@ class Game:
         else:
             self._update_display()
         
+        # Теперь кнопка будет показываться просто "[F] Подобрать"
         self._draw_panels()
         self.renderer.screen.refresh()
         
@@ -242,12 +288,14 @@ class Game:
             self.inventory.equipped_weapon
         )
         self._update_display()
+        print("DEBUG: Inventory drawn")
 
     def _handle_key_press(self, key):
+        print(f"DEBUG: Key pressed: {key}")
         if self.inventory.is_open:
-            if key == ord('w') or key == ord('W'):
+            if key == ord('w') or key == ord('W'):  # Вверх
                 self.inventory.change_slot(-1)
-            elif key == ord('s') or key == ord('S'):
+            elif key == ord('s') or key == ord('S'):  # Вниз
                 self.inventory.change_slot(1)
             elif key == ord('e') or key == ord('E'):
                 self.inventory.use_active_item()
@@ -263,7 +311,7 @@ class Game:
         if key == ord('\t'):
             self.inventory.toggle()
         elif key == ord('f') or key == ord('F'):
-            self.handle_pickup()
+            self.handle_pickup()  # Это должно работать независимо от инвентаря
         elif key in (ord('w'), ord('W'), ord('a'), ord('A'), ord('s'), ord('S'), ord('d'), ord('D')):
             dx = 1 if key in (ord('d'), ord('D')) else -1 if key in (ord('a'), ord('A')) else 0
             dy = 1 if key in (ord('s'), ord('S')) else -1 if key in (ord('w'), ord('W')) else 0
@@ -272,6 +320,7 @@ class Game:
             self.game_over = True
 
     def _handle_combat(self, enemy):
+        """Запускает боевую систему с выбранным врагом"""
         combat = CombatSystem(self, enemy, self.renderer.screen)
         while combat.in_combat and not self.game_over:
             try:
@@ -280,8 +329,8 @@ class Game:
                     combat.process_input(chr(key).lower())
             except curses.error:
                 pass
-        self._update_display() 
-        self.messages = []  
+        self._update_display()  # Перерисовываем карту после боя
+        self.messages = []  # Очищаем сообщения
     
     def check_item_interaction(self):
         self.nearby_items = []
@@ -297,6 +346,7 @@ class Game:
                         self.nearby_items.append(item)
                         break
         
+        # Упрощаем логику показа кнопки
         if self.nearby_items:
             self.interaction_panel.show_pickup_button()
         else:
@@ -305,10 +355,12 @@ class Game:
         return len(self.nearby_items) > 0
 
     def handle_pickup(self):
-
+        if not self.nearby_items:
+            print("DEBUG: No nearby items to pick up")
+            return
         
         picked_items = []
-        for item in self.nearby_items[:]:  
+        for item in self.nearby_items[:]:  # Используем копию списка для безопасного удаления
             x, y, item_obj = item
             if self.inventory.add_item(item_obj):
                 self.items.remove(item)
@@ -316,21 +368,88 @@ class Game:
         
         if picked_items:
             message = f"Подобрано: {', '.join(picked_items)}"
-            self.interaction_panel.add_message(message)  
+            self.interaction_panel.add_message(message)  # Сообщение добавляется только здесь
             self.nearby_items.clear()
             self._update_interface()
+            print(f"DEBUG: Picked up items: {picked_items}")
+
+    def show_start_screen(self):
+        """Отображает экран старта и обрабатывает ввод."""
+        self.start_screen.show()
+        while True:
+            key = self.renderer.screen.getch()
+            if key == ord('s') or key == ord('S'):
+                self.game_state = "playing"
+                self.vision_system.reset()  # Сбрасываем состояние видимости
+                self._place_hero_and_entities()  # Размещаем героя и объекты
+                self._draw_initial_map()  # Рисуем карту
+                break
+            elif key == ord('q') or key == ord('Q'):
+                exit()
+
+    def show_death_screen(self):
+        """Отображает экран смерти и обрабатывает ввод."""
+        print("DEBUG: Entering show_death_screen")
+        self.death_screen.show()
+        self.renderer.screen.refresh()
+        
+        while True:
+            key = self.renderer.screen.getch()
+            if key == ord('r') or key == ord('R'):
+                print("DEBUG: Reset requested")
+                self.reset_game()
+                self.game_state = "playing"
+                self.game_over = False  # Важно сбросить этот флаг
+                self._draw_initial_map()
+                self._update_interface()  # <-- Добавьте этот вызов!
+                break
+            elif key == ord('q') or key == ord('Q'):
+                exit()
+
+    def reset_game(self):
+        """Сбрасывает игру к начальному состоянию."""
+        print("DEBUG: Resetting game state")
+        self.hero.current_health = self.hero.max_health
+        self.game_over = False  # Сбрасываем флаг завершения игры
+        self.enemies.clear()
+        self.items.clear()
+        self.killed_enemies = 0
+        self.total_enemies = 0
+        self.health_panel.killed_enemies = 0  # <-- добавьте эту строку
+        self.nearby_items.clear()
+        self.interaction_panel.messages.clear()
+        self.inventory.clear()
+        self.map = Map(MAP_WIDTH, MAP_HEIGHT)
+        self.vision_system.reset()
+        self._place_hero_and_entities()
+        print("DEBUG: Game reset complete")
 
     def run(self):
         try:
-            while not self.game_over:
-                try:
-                    key = self.renderer.screen.getch()
-                    if key != -1:
-                        self._handle_key_press(key)
-                except curses.error:
-                    pass
+            while True:
+                print(f"DEBUG: Game loop, state: {self.game_state}")
+                if self.game_state == "start":
+                    self.show_start_screen()
+                elif self.game_state == "playing":
+                    self.play_game()  # Этот метод теперь будет обрабатывать игровой цикл
+                elif self.game_state == "death":
+                    self.show_death_screen()
         finally:
             self.renderer.close_screen()
+
+    def play_game(self):
+        """Основной игровой цикл."""
+        self.game_over = False  # Сбрасываем флаг game_over при каждом новом запуске игры
+        while not self.game_over:
+            try:
+                key = self.renderer.screen.getch()
+                if key != -1:
+                    self._handle_key_press(key)
+            except curses.error as e:
+                print(f"DEBUG: Curses error in play_game: {e}")
+        
+        # После выхода из цикла (когда game_over = True) переключаем состояние на экран смерти
+        self.game_state = "death"
             
 if __name__ == "__main__":
     game = Game()

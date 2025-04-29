@@ -7,7 +7,7 @@ from colorama import init, Fore
 init(autoreset=True)
 
 # Размеры карты
-MAP_WIDTH, MAP_HEIGHT = 110, 30
+MAP_WIDTH, MAP_HEIGHT = 100, 30
 
 class Map:
     def __init__(self, width: int, height: int, max_rooms: int = 12, 
@@ -189,7 +189,31 @@ class Map:
                 tiles[y][x] = self.empty_char
                 self.walkable.add((x, y))
 
-    
+    def render(self, hero=None, enemies=[], items=[]):
+        for y in range(self.height):
+            line = []
+            for x in range(self.width):
+                cell_content = self.empty_char  # Один символ
+                # Стены
+                if self.tiles[y][x] == self.wall_char:
+                    cell_content = f"{Fore.BLACK}{self.wall_char}"
+                # Герой
+                if hero and x == hero.x and y == hero.y:
+                    cell_content = f"{hero.color}{hero.char}"
+                # Предметы
+                for item_x, item_y, item in items:
+                    if item_x == x and item_y == y:
+                        cell_content = f"{Fore.GREEN}{item.symbol}"
+                # Враги
+                for enemy in enemies:
+                    if enemy.x == x and enemy.y == y and enemy.current_health > 0:
+                        cell_content = f"{enemy.color}{enemy.char}"
+                line.append(cell_content)
+            print(''.join(line))
+        
+        # Добавляем кнопку "Инвентарь" под картой
+        inventory_button = Fore.CYAN + "[I] Инвентарь"
+        print(f"\033[{self.height+1};1H{inventory_button}")
 
     
 
