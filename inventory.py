@@ -17,7 +17,7 @@ class Inventory:
             if not self.is_open:
                 self.game.interaction_panel.messages.clear()  # Очищаем сообщения при закрытии
                 self.game.interaction_panel.hide_pickup_button()  # Скрываем кнопку подбора
-            self.game._update_interface()
+            self.game.updater._update_interface()
 
     def add_item(self, item) -> bool:
         for slot in range(1, self.count_of_slots + 1):
@@ -40,7 +40,7 @@ class Inventory:
         self.active_slot = new_slot
         print(f"DEBUG: Changed active slot to {self.active_slot}")
         if self.game:
-            self.game._update_interface()
+            self.game.updater._update_interface()
 
     def use_active_item(self):
         item = self.items.get(self.active_slot)
@@ -53,7 +53,7 @@ class Inventory:
         print(f"DEBUG: Using item '{item.title}' in slot {self.active_slot}")
         if isinstance(item, HealthPotion):
             heal = item.use(self.game.hero, self)
-            self.game._sync_health()
+            self.game.updater._sync_health()
             self.game.interaction_panel.add_message(f"Использовано '{item.title}': +{heal} HP")
             item._break_and_remove(self)  # <-- добавлено удаление
         elif isinstance(item, Weapon):
@@ -90,7 +90,7 @@ class Inventory:
             del self.items[self.active_slot]
             if self.game:
                 self.game.interaction_panel.add_message(f"Предмет '{item.title}' выброшен из слота {self.active_slot}")
-                self.game._update_interface()
+                self.game.updater._update_interface()
             print(f"DEBUG: Removed item '{item.title}' from slot {self.active_slot}")
 
     def get_active_item(self):
@@ -107,4 +107,4 @@ class Inventory:
         print("DEBUG: Inventory cleared")
         if self.game:
             self.game.interaction_panel.messages.clear()  # Очищаем сообщения в панели взаимодействия
-            self.game._update_interface()
+            self.game.updater._update_interface()

@@ -158,3 +158,15 @@ class DeathScreen(Screen):
         self.center_text(-3, "ВЫ ПОГИБЛИ!", curses.A_BOLD | curses.A_BLINK)
         self.center_text(-1, "Нажмите 'R' чтобы начать заново")
         self.center_text(0, "Нажмите 'Q' чтобы выйти")
+
+class WinScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+
+    def show(self):
+        self.clear_screen()
+
+        self.center_text(-3, "ПОЗДРАВЛЯЕМ! ВЫ ОЧИСТИЛИ ПОДЗЕМЕЛЬЕ", curses.A_BOLD | curses.color_pair(2))
+        self.center_text(-1, "Вы победили всех тварей Тьмы!", curses.A_BOLD)
+        self.center_text(1, "Нажмите 'R' чтобы начать заново")
+        self.center_text(2, "Нажмите 'Q' чтобы выйти")

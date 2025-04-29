@@ -4,6 +4,7 @@ import curses
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
 from colorama import Fore
 
+
 class CombatSystem:
     def __init__(self, game, enemy, screen):
         self.game = game
@@ -35,7 +36,7 @@ class CombatSystem:
             self.game.vision_system,
             force_redraw=True
         )
-        self.game._draw_panels()
+        self.game.display_manager._draw_panels()
         self.screen.refresh()
 
     def draw_combat_screen(self):
@@ -173,7 +174,7 @@ class CombatSystem:
         damage = self.enemy.attack()
         self.game.hero.current_health -= damage
         self.add_log_message(f"{self.enemy.title} атаковал вас и нанес {damage} урона!")
-        self.game._sync_health()
+        self.game.updater._sync_health()
         
         if self.game.hero.current_health <= 0:
             self.add_log_message("Вы погибли!")
@@ -226,7 +227,7 @@ class CombatSystem:
             item = items[int(key)-1]
             if isinstance(item, HealthPotion):
                 heal = item.use(self.game.hero, self.game.hero.inventory)
-                self.game._sync_health()
+                self.game.updater._sync_health()
                 heal_message = f"Использовано зелье здоровья: +{heal} HP"
                 self.add_log_message(heal_message)
                 self.game.interaction_panel.add_message(heal_message)
@@ -259,17 +260,17 @@ class CombatSystem:
         victory_message = f"Вы победили {self.enemy.title}!"
         self.add_log_message(victory_message)
         self.game.interaction_panel.add_message(victory_message)
-        
+
         if self.enemy in self.game.enemies:
             self.game.enemies.remove(self.enemy)
-        
-        self.game.update_killed_counter()
-        
+
+        self.game.updater.update_killed_counter()
+
         max_y, max_x = self.screen.getmaxyx()
         for i in range(self.victory_delay, 0, -1):
             countdown_msg = f"Возвращение через {i}..."
             self.add_log_message(countdown_msg)
             self.screen.refresh()
             time.sleep(1)
-        
+
         self._exit_combat()
