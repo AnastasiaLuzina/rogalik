@@ -33,6 +33,7 @@ class Game:
         self.killed_enemies = 0 
         self.total_enemies = 0
         self.nearby_items = []
+        self.game_state = "start" 
         
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
@@ -49,6 +50,8 @@ class Game:
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
         )
         
+        self.start_screen = StartScreen(self.renderer.screen)
+        self.death_screen = DeathScreen(self.renderer.screen)
         self._place_hero_and_entities()
         self._draw_initial_map()
 

@@ -19,6 +19,7 @@ class HealthPanel:
         self.game = game
         self.killed_enemies = killed_enemies  # Убитые враги
         self.total_enemies = total_enemies 
+       
 
 
     def render(self, screen):
@@ -114,3 +115,27 @@ class InteractionPanel:
             print(f"DEBUG: Rendered InteractionPanel, messages: {self.messages}")
         except curses.error as e:
             print(f"DEBUG: Curses error in InteractionPanel.render: {e}")
+
+class StartScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ДОБРО ПОЖАЛОВАТЬ В ПОДЗЕМЕЛЬЕ ТЬМЫ", curses.A_BOLD)
+        self.center_text(-2, "Испытай свою храбрость...", curses.A_BOLD)
+        self.center_text(1, "Нажмите 'S' чтобы начать игру")
+        self.center_text(2, "Нажмите 'Q' чтобы выйти")
+
+
+class DeathScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ВЫ ПОГИБЛИ!", curses.A_BOLD | curses.A_BLINK)
+        self.center_text(-1, "Нажмите 'R' чтобы начать заново")
+        self.center_text(0, "Нажмите 'Q' чтобы выйти")
