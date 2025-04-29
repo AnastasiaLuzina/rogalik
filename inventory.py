@@ -1,4 +1,4 @@
-from items import Sword, Bow, IceStaff, Shield, HealthPotion, PoisonPotion, Weapon
+from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
 
 class Inventory:
     def __init__(self, count_of_slots=8, game=None):
@@ -23,17 +23,20 @@ class Inventory:
         for slot in range(1, self.count_of_slots + 1):
             if slot not in self.items:
                 self.items[slot] = item
-                if self.game:
-                    self.game.interaction_panel.add_message(f"Подобран предмет: {item.title}")
                 print(f"DEBUG: Added item '{item.title}' to slot {slot}")
                 return True
-        if self.game:
-            self.game.interaction_panel.add_message("Инвентарь полон!")
         print("DEBUG: Inventory full")
         return False
 
     def change_slot(self, direction: int):
-        new_slot = (self.active_slot + direction - 1) % self.count_of_slots + 1
+        """Изменяет активный слот. 
+           direction: -1 (вверх/W), 1 (вниз/S)"""
+        new_slot = self.active_slot
+        if direction == -1:  # Вверх (W)
+            new_slot = self.active_slot - 1 if self.active_slot > 1 else self.count_of_slots
+        elif direction == 1:  # Вниз (S)
+            new_slot = self.active_slot + 1 if self.active_slot < self.count_of_slots else 1
+            
         self.active_slot = new_slot
         print(f"DEBUG: Changed active slot to {self.active_slot}")
         if self.game:

@@ -9,7 +9,7 @@ INTERACTION_HEIGHT = MAP_HEIGHT - HEALTH_HEIGHT - 1
 
 class HealthPanel:
     def __init__(self, x: int, y: int, width: int, height: int, 
-                 current_hp: int, max_hp: int, game=None):
+                 current_hp: int, max_hp: int, game=None, killed_enemies: int = 0, total_enemies: int = 0):
         self.x = x
         self.y = y
         self.width = width
@@ -17,6 +17,9 @@ class HealthPanel:
         self.current_hp = current_hp
         self.max_hp = max_hp
         self.game = game
+        self.killed_enemies = killed_enemies  # Убитые враги
+        self.total_enemies = total_enemies 
+
 
     def render(self, screen):
         try:
@@ -35,15 +38,18 @@ class HealthPanel:
             screen.addstr(self.y + 1, self.x + 1, hp_text.center(self.width-2))
             screen.addstr(self.y + 2, self.x + 1, health_bar, curses.color_pair(3))
             
-            # Отображение экипированного оружия
-            if self.game and self.game.hero.inventory and self.game.hero.inventory.equipped_weapon:
-                weapon_text = f"Оружие: {self.game.hero.inventory.equipped_weapon.title}"
-            else:
-                weapon_text = "Оружие: Без оружия"
+            enemy_icon = "💀"
+            enemy_count_text = f"{enemy_icon} {self.killed_enemies}/{self.total_enemies}"
+            formatted_text = enemy_count_text.ljust(self.width-2)
+            
+            color_pair = 4 if (self.killed_enemies % 2 == 0) else 5
+            screen.addstr(self.y + 4, self.x + 1, formatted_text, 
+                        curses.color_pair(color_pair) | curses.A_BOLD)
+            
+            weapon_text = f"Оружие: {self.game.hero.inventory.equipped_weapon.title if self.game.hero.inventory.equipped_weapon else 'Без оружия'}"
             screen.addstr(self.y + 3, self.x + 1, weapon_text[:self.width-2], curses.color_pair(5))
-            print(f"DEBUG: Rendered HealthPanel, weapon: {weapon_text}")
-        except curses.error as e:
-            print(f"DEBUG: Curses error in HealthPanel.render: {e}")
+        except curses.error:
+            pass
 
 class InteractionPanel:
     def __init__(self, x: int, y: int, width: int, height: int):
@@ -75,17 +81,20 @@ class InteractionPanel:
             text = f"{prefix}Слот {slot}: {item.title + equipped if item else 'Пусто'}"
             self.messages.append((text, color))
         
-        self.messages.append(("[E] Использовать  [R] Выбросить  [U] Снять экипировку", curses.color_pair(5)))
-        print(f"DEBUG: Showing inventory, active slot: {active_slot}, equipped: {equipped_weapon.title if equipped_weapon else 'None'}")
+        # Первая строка с кнопками
+        self.messages.append(("[E] Использовать  [R] Выбросить", curses.color_pair(5)))
+        # Вторая строка с кнопкой [U]
+        self.messages.append(("[U] Снять экипировку", curses.color_pair(5)))
 
-    def show_pickup_button(self, count):
-        self.messages = [f"[F] Подобрать ({count} предметов)"]
-        print(f"DEBUG: Showing pickup button for {count} items")
+    def show_pickup_button(self):
+        # Убираем проверку на предыдущее сообщение и количество предметов
+        if not self.messages or "[F] Подобрать" not in self.messages[0]:
+            self.messages.insert(0, "[F] Подобрать")
 
     def hide_pickup_button(self):
+        # Упрощаем удаление кнопки
         if self.messages and "[F] Подобрать" in self.messages[0]:
-            self.messages.clear()
-        print("DEBUG: Hiding pickup button")
+            self.messages.pop(0)
             
     def render(self, screen):
         try:

@@ -60,24 +60,26 @@ class Renderer:
     def render_map(self, map: Map, hero: Hero, enemies: list, items: list, vision_system=None, force_redraw: bool = False) -> None:
         if not self.screen:
             self.init_screen()
+        
+        # Явно очищаем экран
+        self.screen.clear()
 
-        # Debug: print visible entities count
         visible_entities = vision_system.get_visible_entities(hero, map, enemies, items) if vision_system else {'enemies': enemies, 'items': items}
-        print(f"Rendering: {len(visible_entities['enemies'])} enemies, {len(visible_entities['items'])} items")
 
         for y in range(map.height):
             for x in range(map.width):
-                # Skip tiles that are neither visible nor explored
                 if vision_system and not (vision_system.is_visible(x, y) or vision_system.is_explored(x, y)):
-                    self.screen.addch(y, x, ord(' '))  # Clear non-visible/non-explored tiles
+                    self.screen.addch(y, x, ord(' '))
                     continue
 
                 if force_redraw or self.is_cell_changed(x, y, hero, enemies, items):
                     self.draw_cell(map, x, y, hero, enemies, items, vision_system)
 
-        # Draw inventory button
+        # Добавляем кнопки управления внизу
         inventory_button = "[Tab] Инвентарь"
-        self.screen.addstr(map.height, 0, inventory_button, curses.color_pair(5))
+        movement_hint = "[WASD] Движение"
+        buttons = f"{inventory_button}  {movement_hint}"
+        self.screen.addstr(map.height, 0, buttons, curses.color_pair(5))
         self.screen.refresh()
 
     def draw_cell(self, map: Map, x: int, y: int, hero: Hero, enemies: list, items: list, vision_system=None) -> None:

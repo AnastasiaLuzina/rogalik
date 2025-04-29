@@ -1,7 +1,7 @@
 import time
 import random
 import curses
-from items import Sword, Bow, IceStaff, Shield, HealthPotion, PoisonPotion, Weapon
+from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
 from colorama import Fore
 
 class CombatSystem:
@@ -24,53 +24,62 @@ class CombatSystem:
     def _exit_combat(self):
         self.in_combat = False
         self.screen.clear()
-        self.game.renderer.last_positions.clear()
-        self.game._sync_health()
-        self.game._update_interface()
-        self.game.renderer.render_map(self.game.map, self.game.hero, self.game.enemies, self.game.items, force_redraw=True)
+        
+        # Полная перерисовка игры
+        self.game.vision_system.update_vision(self.game.hero, self.game.map, [], self.game.items)
+        self.game.renderer.render_map(
+            self.game.map,
+            self.game.hero,
+            [],
+            self.game.items,
+            self.game.vision_system,
+            force_redraw=True
+        )
         self.game._draw_panels()
         self.screen.refresh()
-        print(f"DEBUG: Exited combat, messages in InteractionPanel: {self.game.interaction_panel.messages}")
-
     def draw_combat_screen(self):
         self.screen.clear()
         max_y, max_x = self.screen.getmaxyx()
         if max_y < 16 or max_x < 50:
             self.screen.addstr(0, 0, "Увеличьте терминал!", curses.color_pair(3))
             self.screen.refresh()
-            print(f"DEBUG: Terminal too small! (max_y={max_y}, max_x={max_x})")
             return
         
         try:
-            # Ограничиваем длину строк
             hero_hp = f"Герой: HP {self.game.hero.current_health}/{self.game.hero.max_health}"[:max_x-2]
             enemy_hp = f"{self.enemy.title}: HP {self.enemy.current_health}/{self.enemy.max_health}"[:max_x-2]
             separator = "═" * min(30, max_x-2)
-            action_prompt = "Выберите действие (1-4): "[:max_x-2]
+            action_prompt = "Выберите действие (1-3): "[:max_x-2]
 
-            # Рендеринг интерфейса боя
             self.screen.addstr(0, 0, hero_hp, curses.color_pair(5))
             self.screen.addstr(1, 0, enemy_hp, curses.color_pair(3))
             self.screen.addstr(2, 0, separator, curses.color_pair(2))
             self.screen.addstr(3, 0, "1. Атаковать", curses.color_pair(5))
             self.screen.addstr(4, 0, "2. Использовать предмет", curses.color_pair(5))
-            self.screen.addstr(5, 0, "3. Защищаться", curses.color_pair(5))
-            self.screen.addstr(6, 0, "4. Попытаться убежать", curses.color_pair(5))
-            self.screen.addstr(7, 0, separator, curses.color_pair(2))
+            self.screen.addstr(5, 0, "3. Попытаться убежать", curses.color_pair(5))  # Убрали пункт защиты
+            self.screen.addstr(6, 0, separator, curses.color_pair(2))
             
-            # Боевой лог (строки 8-11)
             for i, message in enumerate(self.combat_log[-self.max_log_lines:]):
                 if 8 + i < max_y:
                     self.screen.addstr(8 + i, 0, message[:max_x-2], curses.color_pair(5))
             
-            # Строка выбора действия
             if 14 < max_y and self.in_combat:
                 self.screen.addstr(min(14, max_y-1), 0, action_prompt, curses.color_pair(2))
             
             self.screen.refresh()
-            print(f"DEBUG: Combat screen drawn, enemy title: {self.enemy.title}, log: {self.combat_log[-self.max_log_lines:]}")
-        except curses.error as e:
-            print(f"DEBUG: Curses error in draw_combat_screen: {e}")
+        except curses.error:
+            pass
+
+    def process_input(self, key):
+        if key in ('1', '2', '3'):
+            if key == '1':
+                self.player_attack()
+            elif key == '2':
+                self.use_item()
+            elif key == '3':
+                self.try_escape()
+            return True
+        return False
 
     def add_log_message(self, message):
         max_y, max_x = self.screen.getmaxyx()
@@ -118,40 +127,16 @@ class CombatSystem:
             return
         
         damage = self.calculate_damage(self.enemy.damage)
-        actual_damage = max(1, damage - self.defense_bonus)
-        self.game.hero.current_health -= actual_damage
-        self.defense_bonus = 0
+        self.game.hero.current_health -= damage
         
-        msg = f"{self.enemy.title} атаковал вас и нанес {actual_damage} урона!"
-        if damage != actual_damage:
-            msg += f" (Заблокировано {damage - actual_damage})"
-        
-        self.add_log_message(msg)
+        self.add_log_message(f"{self.enemy.title} атаковал вас и нанес {damage} урона!")
         self.game._sync_health()
         
         if self.game.hero.current_health <= 0:
             self.add_log_message("☠️ Вы погибли! ☠️")
             self.game.game_over = True
             self.in_combat = False
-        print(f"DEBUG: Enemy {self.enemy.title} attacked, dealt {actual_damage} damage")
 
-    def player_defend(self):
-        shield = None
-        for item in self.game.hero.inventory.items.values():
-            if isinstance(item, Shield):
-                shield = item
-                break
-        
-        if shield:
-            self.defense_bonus = shield.save_from_damage
-            msg = f"Вы подняли {shield.title} для защиты!"
-        else:
-            self.defense_bonus = 3
-            msg = f"Вы приготовились к защите!"
-        
-        self.add_log_message(msg)
-        time.sleep(0.5)
-        self.enemy_turn()
 
     def try_escape(self):
         if random.random() < 0.5:
@@ -230,19 +215,24 @@ class CombatSystem:
             self.add_log_message("Отмена выбора предмета!")
 
     def victory_sequence(self):
-        victory_message = f"Вы победили {self.enemy.title}!"[:self.screen.getmaxyx()[1]-2]
+        victory_message = f"Вы победили {self.enemy.title}!"
         self.add_log_message(victory_message)
         self.game.interaction_panel.add_message(victory_message)
         
-        for i in range(self.victory_delay, 0, -1):
-            message = f"Возвращение через {i}..."[:self.screen.getmaxyx()[1]-2]
-            self.add_log_message(message)
-            self.screen.refresh()
-            time.sleep(0.5)
-        
-        self.in_combat = False
+        # Удаляем врага из списка сразу
         if self.enemy in self.game.enemies:
             self.game.enemies.remove(self.enemy)
         
+        # Обновляем счетчик без анимации
+        self.game.update_killed_counter()
+        
+        # Отсчет с перерисовкой
+        max_y, max_x = self.screen.getmaxyx()
+        for i in range(self.victory_delay, 0, -1):
+            countdown_msg = f"Возвращение через {i}..."
+            self.add_log_message(countdown_msg)
+            self.screen.refresh()
+            time.sleep(1)
+        
+        # Полноценный выход с перерисовкой
         self._exit_combat()
-        print(f"DEBUG: Victory over {self.enemy.title}")
