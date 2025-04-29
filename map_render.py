@@ -12,12 +12,12 @@ class Renderer:
 
     def init_colors(self):
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)   # Wall
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)   # Hero/Empty
-        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     # Enemy
-        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # Item
-        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    # UI
-        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Для активного слота
+        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)  
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK) 
+        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)    
+        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)  
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    
+        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  
 
     def init_screen(self):
         self.screen = curses.initscr()
@@ -61,7 +61,6 @@ class Renderer:
         if not self.screen:
             self.init_screen()
         
-        # Явно очищаем экран
         self.screen.clear()
 
         visible_entities = vision_system.get_visible_entities(hero, map, enemies, items) if vision_system else {'enemies': enemies, 'items': items}
