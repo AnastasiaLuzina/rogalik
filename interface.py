@@ -116,6 +116,25 @@ class InteractionPanel:
         except curses.error as e:
             print(f"DEBUG: Curses error in InteractionPanel.render: {e}")
 
+
+
+class Screen:
+    def __init__(self, screen):
+        self.screen = screen
+
+    def clear_screen(self):
+        """Очищает экран."""
+        self.screen.clear()
+        self.screen.refresh()
+
+    def center_text(self, offset_y, text, attributes=0):
+        """Выводит текст по центру экрана с заданным смещением."""
+        max_y, max_x = self.screen.getmaxyx()
+        y = max_y // 2 + offset_y
+        x = max_x // 2 - len(text) // 2
+        self.screen.addstr(y, x, text, attributes)
+
+
 class StartScreen(Screen):
     def __init__(self, screen):
         super().__init__(screen)

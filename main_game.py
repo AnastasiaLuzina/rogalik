@@ -6,7 +6,7 @@ import time
 from map import Map, MAP_WIDTH, MAP_HEIGHT
 from persons import Hero, Undead, Ghost, DarkMage
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion
-from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT
+from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT, DeathScreen, StartScreen
 from map_render import Renderer
 from combat import CombatSystem
 from vision import VisionSystem
