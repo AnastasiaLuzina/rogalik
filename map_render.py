@@ -60,6 +60,9 @@ class Renderer:
     def render_map(self, map: Map, hero: Hero, enemies: list, items: list, vision_system=None, force_redraw: bool = False) -> None:
         if not self.screen:
             self.init_screen()
+        
+        # Явно очищаем экран
+        self.screen.clear()
 
         visible_entities = vision_system.get_visible_entities(hero, map, enemies, items) if vision_system else {'enemies': enemies, 'items': items}
 

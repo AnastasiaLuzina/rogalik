@@ -24,14 +24,19 @@ class CombatSystem:
     def _exit_combat(self):
         self.in_combat = False
         self.screen.clear()
-        self.game.renderer.last_positions.clear()
-        self.game._sync_health()
-        self.game._update_interface()
-        self.game.renderer.render_map(self.game.map, self.game.hero, self.game.enemies, self.game.items, force_redraw=True)
+        
+        # Полная перерисовка игры
+        self.game.vision_system.update_vision(self.game.hero, self.game.map, [], self.game.items)
+        self.game.renderer.render_map(
+            self.game.map,
+            self.game.hero,
+            [],
+            self.game.items,
+            self.game.vision_system,
+            force_redraw=True
+        )
         self.game._draw_panels()
         self.screen.refresh()
-        print(f"DEBUG: Exited combat, messages in InteractionPanel: {self.game.interaction_panel.messages}")
-
     def draw_combat_screen(self):
         self.screen.clear()
         max_y, max_x = self.screen.getmaxyx()
@@ -210,22 +215,24 @@ class CombatSystem:
             self.add_log_message("Отмена выбора предмета!")
 
     def victory_sequence(self):
-        victory_message = f"Вы победили {self.enemy.title}!"[:self.screen.getmaxyx()[1]-2]
+        victory_message = f"Вы победили {self.enemy.title}!"
         self.add_log_message(victory_message)
         self.game.interaction_panel.add_message(victory_message)
-         
-         # Увеличиваем счетчик убитых врагов
-        self.game.update_killed_counter()  # Новая строка
         
-        for i in range(self.victory_delay, 0, -1):
-            message = f"Возвращение через {i}..."[:self.screen.getmaxyx()[1]-2]
-            self.add_log_message(message)
-            self.screen.refresh()
-            time.sleep(0.5)
-        
-        self.in_combat = False
+        # Удаляем врага из списка сразу
         if self.enemy in self.game.enemies:
             self.game.enemies.remove(self.enemy)
         
+        # Обновляем счетчик без анимации
+        self.game.update_killed_counter()
+        
+        # Отсчет с перерисовкой
+        max_y, max_x = self.screen.getmaxyx()
+        for i in range(self.victory_delay, 0, -1):
+            countdown_msg = f"Возвращение через {i}..."
+            self.add_log_message(countdown_msg)
+            self.screen.refresh()
+            time.sleep(1)
+        
+        # Полноценный выход с перерисовкой
         self._exit_combat()
-        print(f"DEBUG: Victory over {self.enemy.title}")

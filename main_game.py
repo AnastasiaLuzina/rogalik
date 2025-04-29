@@ -147,13 +147,8 @@ class Game:
     def update_killed_counter(self):
         self.killed_enemies += 1
         self.health_panel.killed_enemies = self.killed_enemies
-        self.health_panel.render(self.renderer.screen)  # Перерисовываем панель
-        # Анимация обновления
-        for _ in range(3):
-            self.health_panel.render(self.renderer.screen)
-            self.renderer.screen.refresh()
-            time.sleep(0.1)
-            curses.curs_set(0)
+        self.health_panel.render(self.renderer.screen)
+        self.renderer.screen.refresh()
 
     def _move_hero(self, dx, dy):
         new_x, new_y = self.hero.x + dx, self.hero.y + dy
