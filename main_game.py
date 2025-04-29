@@ -6,7 +6,7 @@ import time
 from map import Map, MAP_WIDTH, MAP_HEIGHT
 from persons import Hero, Undead, Ghost, DarkMage
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion
-from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT
+from interface import HealthPanel, InteractionPanel, PANEL_WIDTH, HEALTH_HEIGHT, INTERACTION_HEIGHT, DeathScreen, StartScreen
 from map_render import Renderer
 from combat import CombatSystem
 from vision import VisionSystem
@@ -33,6 +33,7 @@ class Game:
         self.killed_enemies = 0 
         self.total_enemies = 0
         self.nearby_items = []
+        self.game_state = "start" 
         
         self.health_panel = HealthPanel(
             x=MAP_WIDTH + 1, y=1,
@@ -49,6 +50,8 @@ class Game:
             width=PANEL_WIDTH, height=INTERACTION_HEIGHT
         )
         
+        self.start_screen = StartScreen(self.renderer.screen)
+        self.death_screen = DeathScreen(self.renderer.screen)
         self._place_hero_and_entities()
         self._draw_initial_map()
 
@@ -348,17 +351,76 @@ class Game:
             self._update_interface()
             print(f"DEBUG: Picked up items: {picked_items}")
 
+    def show_start_screen(self):
+        """Отображает экран старта и обрабатывает ввод."""
+        self.start_screen.show()
+        while True:
+            key = self.renderer.screen.getch()
+            if key == ord('s') or key == ord('S'):
+                self.game_state = "playing"
+                self._place_hero_and_entities()  # Инициализация новой игры
+                self._draw_initial_map()
+                break
+            elif key == ord('q') or key == ord('Q'):
+                exit()
+
+    def show_death_screen(self):
+        """Отображает экран смерти и обрабатывает ввод."""
+        self.death_screen.show()
+        while True:
+            key = self.renderer.screen.getch()
+            if key == ord('r') or key == ord('R'):
+                self.reset_game()  # Перезапуск игры
+                self.game_state = "playing"
+                break
+            elif key == ord('q') or key == ord('Q'):
+                exit()
+
+    def reset_game(self):
+        """Сбрасывает игру к начальному состоянию."""
+        self.hero.current_health = self.hero.max_health
+        self.enemies.clear()
+        self.items.clear()
+        self.killed_enemies = 0
+        self.total_enemies = 0
+        self.inventory.clear()
+        self._place_hero_and_entities()
+        self._draw_initial_map()
+
     def run(self):
         try:
-            while not self.game_over:
-                try:
-                    key = self.renderer.screen.getch()
-                    if key != -1:
-                        self._handle_key_press(key)
-                except curses.error as e:
-                    print(f"DEBUG: Curses error in run: {e}")
+            while True:
+                if self.game_state == "start":
+                    self.show_start_screen()
+                elif self.game_state == "playing":
+                    self.play_game()
+                    # Проверяем, не завершилась ли игра (герой умер)
+                    if self.game_over:
+                        self.game_state = "death"
+                elif self.game_state == "death":
+                    self.show_death_screen()
+            
+                # Обработка ввода в игровом состоянии
+                if self.game_state == "playing":
+                    try:
+                        key = self.renderer.screen.getch()
+                        if key != -1:
+                            self._handle_key_press(key)
+                    except curses.error:
+                        pass
         finally:
             self.renderer.close_screen()
+
+    def play_game(self):
+        """Основной игровой цикл."""
+        while not self.game_over:
+            try:
+                key = self.renderer.screen.getch()
+                if key != -1:
+                    self._handle_key_press(key)
+            except curses.error as e:
+                print(f"DEBUG: Curses error in run: {e}")
+        self.game_state = "death"  # Переход на экран смерти при game_over
             
 if __name__ == "__main__":
     game = Game()

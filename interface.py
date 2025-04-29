@@ -19,6 +19,7 @@ class HealthPanel:
         self.game = game
         self.killed_enemies = killed_enemies  # Убитые враги
         self.total_enemies = total_enemies 
+       
 
 
     def render(self, screen):
@@ -114,3 +115,46 @@ class InteractionPanel:
             print(f"DEBUG: Rendered InteractionPanel, messages: {self.messages}")
         except curses.error as e:
             print(f"DEBUG: Curses error in InteractionPanel.render: {e}")
+
+
+
+class Screen:
+    def __init__(self, screen):
+        self.screen = screen
+
+    def clear_screen(self):
+        """Очищает экран."""
+        self.screen.clear()
+        self.screen.refresh()
+
+    def center_text(self, offset_y, text, attributes=0):
+        """Выводит текст по центру экрана с заданным смещением."""
+        max_y, max_x = self.screen.getmaxyx()
+        y = max_y // 2 + offset_y
+        x = max_x // 2 - len(text) // 2
+        self.screen.addstr(y, x, text, attributes)
+
+
+class StartScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ДОБРО ПОЖАЛОВАТЬ В ПОДЗЕМЕЛЬЕ ТЬМЫ", curses.A_BOLD)
+        self.center_text(-2, "Испытай свою храбрость...", curses.A_BOLD)
+        self.center_text(1, "Нажмите 'S' чтобы начать игру")
+        self.center_text(2, "Нажмите 'Q' чтобы выйти")
+
+
+class DeathScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+    
+    def show(self):
+        self.clear_screen()
+        
+        self.center_text(-3, "ВЫ ПОГИБЛИ!", curses.A_BOLD | curses.A_BLINK)
+        self.center_text(-1, "Нажмите 'R' чтобы начать заново")
+        self.center_text(0, "Нажмите 'Q' чтобы выйти")
