@@ -1,5 +1,5 @@
-from colorama import Fore, Back, Style
-from map import MAP_WIDTH, MAP_HEIGHT
+
+from map import MAP_HEIGHT
 import re
 import curses
 
@@ -17,7 +17,7 @@ class HealthPanel:
         self.current_hp = current_hp
         self.max_hp = max_hp
         self.game = game
-        self.killed_enemies = killed_enemies  # Убитые враги
+        self.killed_enemies = killed_enemies
         self.total_enemies = total_enemies 
        
 
@@ -66,9 +66,8 @@ class InteractionPanel:
         if len(message) > max_length:
             message = message[:max_length-3] + '...'
         self.messages.append(message)
-        if len(self.messages) > self.height - 2:  # Оставляем место для рамки
+        if len(self.messages) > self.height - 2: 
             self.messages.pop(0)
-        print(f"DEBUG: Added message to InteractionPanel: {message}")
 
     def show_inventory(self, items, active_slot, equipped_weapon=None):
         self.messages.clear()
@@ -82,18 +81,15 @@ class InteractionPanel:
             text = f"{prefix}Слот {slot}: {item.title + equipped if item else 'Пусто'}"
             self.messages.append((text, color))
         
-        # Первая строка с кнопками
+       
         self.messages.append(("[E] Использовать  [R] Выбросить", curses.color_pair(5)))
-        # Вторая строка с кнопкой [U]
         self.messages.append(("[U] Снять экипировку", curses.color_pair(5)))
 
     def show_pickup_button(self):
-        # Убираем проверку на предыдущее сообщение и количество предметов
         if not self.messages or "[F] Подобрать" not in self.messages[0]:
             self.messages.insert(0, "[F] Подобрать")
 
     def hide_pickup_button(self):
-        # Упрощаем удаление кнопки
         if self.messages and "[F] Подобрать" in self.messages[0]:
             self.messages.pop(0)
             
@@ -112,23 +108,18 @@ class InteractionPanel:
                     screen.addstr(self.y + 1 + i, self.x + 1, text[:self.width-2], color)
                 else:
                     screen.addstr(self.y + 1 + i, self.x + 1, msg[:self.width-2], curses.color_pair(5))
-            print(f"DEBUG: Rendered InteractionPanel, messages: {self.messages}")
-        except curses.error as e:
-            print(f"DEBUG: Curses error in InteractionPanel.render: {e}")
-
-
+        except curses.error:
+            pass
 
 class Screen:
     def __init__(self, screen):
         self.screen = screen
 
     def clear_screen(self):
-        """Очищает экран."""
         self.screen.clear()
         self.screen.refresh()
 
     def center_text(self, offset_y, text, attributes=0):
-        """Выводит текст по центру экрана с заданным смещением."""
         max_y, max_x = self.screen.getmaxyx()
         y = max_y // 2 + offset_y
         x = max_x // 2 - len(text) // 2
@@ -158,3 +149,15 @@ class DeathScreen(Screen):
         self.center_text(-3, "ВЫ ПОГИБЛИ!", curses.A_BOLD | curses.A_BLINK)
         self.center_text(-1, "Нажмите 'R' чтобы начать заново")
         self.center_text(0, "Нажмите 'Q' чтобы выйти")
+
+class WinScreen(Screen):
+    def __init__(self, screen):
+        super().__init__(screen)
+
+    def show(self):
+        self.clear_screen()
+
+        self.center_text(-3, "ПОЗДРАВЛЯЕМ! ВЫ ОЧИСТИЛИ ПОДЗЕМЕЛЬЕ", curses.A_BOLD | curses.color_pair(2))
+        self.center_text(-1, "Вы победили всех тварей Тьмы!", curses.A_BOLD)
+        self.center_text(1, "Нажмите 'R' чтобы начать заново")
+        self.center_text(2, "Нажмите 'Q' чтобы выйти")

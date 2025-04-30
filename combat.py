@@ -2,7 +2,6 @@ import time
 import random
 import curses
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
-from colorama import Fore
 
 class CombatSystem:
     def __init__(self, game, enemy, screen):
@@ -13,7 +12,7 @@ class CombatSystem:
         self.combat_log = []
         self.defense_bonus = 0
         self.victory_delay = 2
-        self.max_log_lines = 4  # Исправлено ранее
+        self.max_log_lines = 4  
         self.enemy_frozen_turns = 0
         self.poison_effect = {'damage': 0, 'turns': 0}
         self._enter_combat()
@@ -29,13 +28,13 @@ class CombatSystem:
         self.game.vision_system.update_vision(self.game.hero, self.game.map, [], self.game.items)
         self.game.renderer.render_map(
             self.game.map,
-            self.game.hero,  # Исправлено: self.hero -> self.game.hero
+            self.game.hero,  
             [],
             self.game.items,
             self.game.vision_system,
             force_redraw=True
         )
-        self.game._draw_panels()
+        self.game.display_manager._draw_panels()
         self.screen.refresh()
 
     def draw_combat_screen(self):
@@ -60,11 +59,10 @@ class CombatSystem:
             self.screen.addstr(5, 0, "3. Попытаться убежать", curses.color_pair(5))
             self.screen.addstr(6, 0, separator, curses.color_pair(2))
             
-            print(f"DEBUG: Combat log contents: {self.combat_log}")  # Отладка содержимого лога
             for i, message in enumerate(self.combat_log[-self.max_log_lines:]):
                 if 8 + i < max_y:
                     self.screen.addstr(8 + i, 0, message[:max_x-2], curses.color_pair(5))
-                    print(f"DEBUG: Displaying log message {i}: {message}")  # Отладка отображаемых сообщений
+        
             
             if self.enemy_frozen_turns > 0:
                 self.screen.addstr(7, 0, f"Противник заморожен: {self.enemy_frozen_turns} ходов"[:max_x-2], curses.color_pair(3))
@@ -73,8 +71,8 @@ class CombatSystem:
                 self.screen.addstr(min(14, max_y-1), 0, action_prompt, curses.color_pair(2))
             
             self.screen.refresh()
-        except curses.error as e:
-            print(f"DEBUG: Curses error in draw_combat_screen: {e}")
+        except curses.error:
+            pass
 
     def process_input(self, key):
         if key in ('1', '2', '3'):
@@ -85,14 +83,13 @@ class CombatSystem:
             elif key == '3':
                 self.try_escape()
             return True
-        print(f"DEBUG: Invalid combat input: {key}")
+
         return False
 
     def add_log_message(self, message):
         max_y, max_x = self.screen.getmaxyx()
         message = message[:max_x-2]
         self.combat_log.append(message)
-        print(f"DEBUG: Added combat log message: {message}")
         self.draw_combat_screen()
 
     def calculate_damage(self, base_damage, variation=0.3):
@@ -106,12 +103,11 @@ class CombatSystem:
             self.enemy.current_health -= poison_damage
             self.poison_effect['turns'] -= 1
             self.add_log_message(f"{self.enemy.title} получил {poison_damage} урона от яда! Осталось {self.poison_effect['turns']} ходов.")
-            print(f"DEBUG: Applied poison damage: {poison_damage}, turns left: {self.poison_effect['turns']}")
 
     def player_attack(self):
         time.sleep(0.2)
         weapon = self.game.hero.inventory.equipped_weapon
-        damage = 5  # Базовый урон без оружия
+        damage = 5  
         freeze_duration = 0
         attack_message = f"Вы нанесли {damage} урона кулаком!"
 
@@ -138,10 +134,9 @@ class CombatSystem:
         else:
             damage = self.calculate_damage(damage)
 
-        print(f"DEBUG: Preparing to log attack message: {attack_message}")
+
         self.enemy.current_health -= damage
         self.add_log_message(attack_message)
-        print(f"DEBUG: Player attacked {self.enemy.title}, dealt {damage} damage")
 
         if freeze_duration > 0:
             self.enemy_frozen_turns = freeze_duration
@@ -166,14 +161,13 @@ class CombatSystem:
         if self.enemy_frozen_turns > 0:
             self.enemy_frozen_turns -= 1
             self.add_log_message(f"{self.enemy.title} заморожен, осталось {self.enemy_frozen_turns} ходов.")
-            print(f"DEBUG: Enemy is frozen, {self.enemy_frozen_turns} turns left")
             self.draw_combat_screen()
             return
 
         damage = self.enemy.attack()
         self.game.hero.current_health -= damage
         self.add_log_message(f"{self.enemy.title} атаковал вас и нанес {damage} урона!")
-        self.game._sync_health()
+        self.game.updater._sync_health()
         
         if self.game.hero.current_health <= 0:
             self.add_log_message("Вы погибли!")
@@ -187,7 +181,6 @@ class CombatSystem:
             self.game.interaction_panel.add_message(escape_message)
             self.in_combat = False
             self._exit_combat()
-            print(f"DEBUG: Escaped from {self.enemy.title}")
         else:
             self.add_log_message(f"✖ Вам не удалось сбежать!")
             time.sleep(0.5)
@@ -210,9 +203,8 @@ class CombatSystem:
             if len(items) + 2 < max_y:
                 self.screen.addstr(len(items) + 2, 0, "Нажмите цифру или другую клавишу для отмены"[:max_x-2], curses.color_pair(2))
             self.screen.refresh()
-            print("DEBUG: Item selection screen drawn")
-        except curses.error as e:
-            print(f"DEBUG: Curses error in use_item: {e}")
+        except curses.error:
+            pass
 
         while True:
             key = self.screen.getch()
@@ -226,12 +218,11 @@ class CombatSystem:
             item = items[int(key)-1]
             if isinstance(item, HealthPotion):
                 heal = item.use(self.game.hero, self.game.hero.inventory)
-                self.game._sync_health()
+                self.game.updater._sync_health()
                 heal_message = f"Использовано зелье здоровья: +{heal} HP"
                 self.add_log_message(heal_message)
                 self.game.interaction_panel.add_message(heal_message)
-                print(f"DEBUG: Used {item.title}, restored {heal} HP")
-                item._break_and_remove(self.game.hero.inventory, suppress_update=True)  # <-- исправлено
+                item._break_and_remove(self.game.hero.inventory, suppress_update=True)
                 time.sleep(0.5)
                 self.enemy_turn()
             elif isinstance(item, PoisonPotion):
@@ -240,8 +231,7 @@ class CombatSystem:
                 poison_message = f"Использовано ядовитое зелье: {poison_damage} урона/ход на {duration} хода"
                 self.add_log_message(poison_message)
                 self.game.interaction_panel.add_message(poison_message)
-                print(f"DEBUG: Used {item.title}, applied poison: {poison_damage}/turn for {duration} turns")
-                item._break_and_remove(self.game.hero.inventory, suppress_update=True)  # <-- исправлено
+                item._break_and_remove(self.game.hero.inventory, suppress_update=True)
                 time.sleep(0.5)
                 self.enemy_turn()
             elif isinstance(item, Weapon):
@@ -249,7 +239,6 @@ class CombatSystem:
                 equip_message = f"Экипировано: {item.title}"
                 self.add_log_message(equip_message)
                 self.game.interaction_panel.add_message(equip_message)
-                print(f"DEBUG: Equipped {item.title}")
             else:
                 self.add_log_message("Этот предмет нельзя использовать сейчас!")
         else:
@@ -259,17 +248,17 @@ class CombatSystem:
         victory_message = f"Вы победили {self.enemy.title}!"
         self.add_log_message(victory_message)
         self.game.interaction_panel.add_message(victory_message)
-        
+
         if self.enemy in self.game.enemies:
             self.game.enemies.remove(self.enemy)
-        
-        self.game.update_killed_counter()
-        
+
+        self.game.updater.update_killed_counter()
+
         max_y, max_x = self.screen.getmaxyx()
         for i in range(self.victory_delay, 0, -1):
             countdown_msg = f"Возвращение через {i}..."
             self.add_log_message(countdown_msg)
             self.screen.refresh()
             time.sleep(1)
-        
+
         self._exit_combat()

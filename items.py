@@ -8,21 +8,17 @@ class Items:
     
     def _break_and_remove(self, inventory, suppress_update=False):
         if inventory:
-            print(f"DEBUG: Attempting to remove {self.title} from inventory: {inventory.items}")
             removed = False
             for slot in list(inventory.items.keys()):
                 if inventory.items[slot] == self:
                     del inventory.items[slot]
                     removed = True
-                    print(f"DEBUG: Removed {self.title} from slot {slot}")
             if removed and inventory.game and not suppress_update:
-                inventory.game._update_interface()
+                inventory.game.updater._update_interface() 
                 inventory.active_slot = inventory.active_slot
-            print(f"DEBUG: Removal of {self.title} successful: {removed}")
             return removed
-        print(f"DEBUG: No inventory provided for {self.title}")
         return False
-
+    
 class Weapon(Items):
     def __init__(self, title: str, type: str, symbol: str, damage: int):
         super().__init__(title, type, symbol)
@@ -34,33 +30,33 @@ class Weapon(Items):
 class Sword(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "melee", symbol, damage)
-        self.double_strike_chance = 0.2  # 20% шанс на двойной удар
+        self.double_strike_chance = 0.2 
         
     def use(self, inventory) -> int:
         if random.random() < self.double_strike_chance:
-            return self.damage * 2  # Двойной удар
+            return self.damage * 2 
         return self.damage
 
 class Bow(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "ranged", symbol, damage)
-        self.critical_shot_chance = 0.25  # 25% шанс на точный выстрел
+        self.critical_shot_chance = 0.25
         
     def use(self, inventory) -> int:
         if random.random() < self.critical_shot_chance:
-            return int(self.damage * 1.5)  # Точный выстрел
+            return int(self.damage * 1.5) 
         return self.damage
     
 class IceStaff(Weapon):
     def __init__(self, title: str, damage: int, symbol: str):
         super().__init__(title, "magic", symbol, damage)
-        self.freeze_chance = 0.15  # 15% шанс на заморозку
-        self.freeze_duration = 3  # Заморозка на 3 хода
+        self.freeze_chance = 0.15 
+        self.freeze_duration = 3 
     
     def use(self, inventory) -> tuple:
         if random.random() < self.freeze_chance:
-            return (self.damage, self.freeze_duration)  # Урон и заморозка
-        return (self.damage, 0)  # Только урон
+            return (self.damage, self.freeze_duration)  
+        return (self.damage, 0)
 
 class HealthPotion(Items):
     def __init__(self, title: str, heal_amount: int, symbol: str):
@@ -79,5 +75,4 @@ class PoisonPotion(Items):
         self.duration = duration
 
     def use(self, target, inventory) -> tuple:
-        # Возвращаем начальный урон и параметры для эффекта яда
-        return (0, self.damage_per_turn, self.duration)  # Начальный урон 0, урон в ход, длительность
+        return (0, self.damage_per_turn, self.duration)  

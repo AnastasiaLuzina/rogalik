@@ -13,9 +13,7 @@ class VisionSystem:
 
 
     def update_vision(self, hero: Hero, map: Map, enemies: List[Enemy], items: List[Tuple[int, int, Items]]) -> Dict[str, Set[Tuple[int, int]]]:
-        """
-        Updates visible and explored tiles based on hero's position.
-        """
+
         self.visible_tiles.clear()
         hero_x, hero_y = hero.x, hero.y
         
@@ -35,15 +33,10 @@ class VisionSystem:
 
 
     def _is_visible(self, x0: int, y0: int, x1: int, y1: int, map: Map) -> bool:
-        """
-        Checks if tile (x1, y1) is visible from (x0, y0) considering walls.
-        Uses Bresenham's line algorithm for line-of-sight.
-        """
 
         if math.hypot(x1 - x0, y1 - y0) > self.vision_radius:
              return False
         
-        # Bresenham's line algorithm
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
         x, y = x0, y0
@@ -55,14 +48,12 @@ class VisionSystem:
             if not (0 <= x < map.width and 0 <= y < map.height):
                  return False
 
-           # Проверка препятствий (кроме целевого тайла)
             if (x != x1 or y != y1) and map.tiles[y][x] == map.wall_char:
                  return False
             
             if x == x1 and y == y1:
                  return True
 
-            # Move to next tile
             e2 = 2 * err
             if e2 > -dy:
                 err -= dy
@@ -71,17 +62,12 @@ class VisionSystem:
                 err += dx
                 y += sy
 
-
     def get_visible_entities(self, hero: Hero, map: Map, enemies: List[Enemy], items: List[Tuple[int, int, Items]]) -> Dict[str, List]:
     
-
-        # Фильтрация врагов в зоне видимости
         visible_enemies = [e for e in enemies 
                            if (e.x, e.y) in self.visible_tiles 
                            and e.current_health > 0]
 
-
-         # Фильтрация предметов в зоне видимости
         visible_items = [item for item in items 
                          if (item[0], item[1]) in self.visible_tiles]
 
@@ -97,7 +83,5 @@ class VisionSystem:
         return (x, y) in self.explored_tiles
     
     def reset(self):
-       
-        self.visible_tiles.clear()
-        self.explored_tiles.clear()
-        self.last_hero_pos = (-1, -1)
+        self.visible = set()
+        self.explored = set()

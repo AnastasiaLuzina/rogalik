@@ -1,7 +1,6 @@
 import curses
 from map import Map
 from persons import Hero
-from items import Items
 
 class Renderer:
     def __init__(self):
@@ -12,12 +11,12 @@ class Renderer:
 
     def init_colors(self):
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)   # Wall
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)   # Hero/Empty
-        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     # Enemy
-        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # Item
-        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)    # UI
-        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Для активного слота
+        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)  
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)   
+        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)     
+        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)   
+        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)  
 
     def init_screen(self):
         self.screen = curses.initscr()
@@ -61,23 +60,18 @@ class Renderer:
         if not self.screen:
             self.init_screen()
         
-        # Явно очищаем экран
         self.screen.clear()
 
-        visible_entities = vision_system.get_visible_entities(hero, map, enemies, items) if vision_system else {'enemies': enemies, 'items': items}
 
         for y in range(map.height):
             for x in range(map.width):
-                # Пропускаем тайлы, которые не видны и не исследованы
                 if vision_system and not (vision_system.is_visible(x, y) or vision_system.is_explored(x, y)):
                     self.screen.addch(y, x, ord(' '))
                     continue
 
-                # Отрисовываем только если клетка изменилась или требуется полная перерисовка
                 if force_redraw or self.is_cell_changed(x, y, hero, enemies, items):
                     self.draw_cell(map, x, y, hero, enemies, items, vision_system)
 
-        # Добавляем кнопки управления внизу
         inventory_button = "[Tab] Инвентарь"
         movement_hint = "[WASD] Движение"
         buttons = f"{inventory_button}  {movement_hint}"
@@ -106,3 +100,10 @@ class Renderer:
                 self.screen.addch(y, x, ord(map.wall_char), color)
             else:
                 self.screen.addch(y, x, ord(' '), color)
+
+    def reset(self):
+        self.last_positions = {}
+        if self.screen:
+            self.screen.clear()
+            self.screen.refresh()
+            self.init_colors()
