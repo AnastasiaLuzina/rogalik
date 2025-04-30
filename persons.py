@@ -1,6 +1,4 @@
 import random
-from inventory import Inventory
-from items import Weapon
 from colorama import init, Fore
 
 init(autoreset=True)
@@ -21,11 +19,11 @@ class Hero(Person):
         self.inventory = None
 
     def attack(self):
-        base_damage = 5  # Базовый урон без оружия
+        base_damage = 5 
         freeze_duration = 0
         if self.inventory.equipped_weapon:
             result = self.inventory.equipped_weapon.use(self.inventory)
-            if isinstance(result, tuple):  # Для IceStaff
+            if isinstance(result, tuple):  
                 base_damage, freeze_duration = result
             else:
                 base_damage = result
@@ -34,7 +32,6 @@ class Hero(Person):
         max_dmg = int(base_damage * 1.3)
         damage = random.randint(min_dmg, max_dmg)
         
-        print(f"DEBUG: Hero attacked with {self.inventory.equipped_weapon.title if self.inventory.equipped_weapon else 'fist'}, damage: {damage}")
         return damage, freeze_duration
 
 class Enemy(Person):
@@ -44,13 +41,11 @@ class Enemy(Person):
         self.current_health = max_health
         self.damage = damage
         self.title = title
-        print(f"DEBUG: Created enemy {title} at ({x}, {y}) with char {char}")
 
     def attack(self):
         min_dmg = max(1, int(self.damage * 0.7))
         max_dmg = int(self.damage * 1.3)
         damage = random.randint(min_dmg, max_dmg)
-        print(f"DEBUG: {self.title} attacked, damage: {damage}")
         return damage
 
 class Undead(Enemy):
@@ -62,7 +57,6 @@ class Undead(Enemy):
         if self.can_resurrect and self.current_health <= 0:
             self.current_health = 20
             self.can_resurrect = False
-            print(f"DEBUG: Нежить воскресла!")
             return True
         return False
 

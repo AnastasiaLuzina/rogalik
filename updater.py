@@ -1,10 +1,6 @@
-from interface import HealthPanel, InteractionPanel
-from display import DisplayManager
-from inventory import Inventory
-
 class Updater:
     def __init__(self, game):
-        self.game = game  # Ссылка на основной объект игры
+        self.game = game 
 
     def update_killed_counter(self):
         self.game.killed_enemies += 1
@@ -17,12 +13,12 @@ class Updater:
 
     def _update_interface(self):
         self._sync_health()
-        has_items = self.game.check_item_interaction()
+        has_items = self.game.player_controller.check_item_interaction()
         if self.game.inventory.is_open:
             self._draw_inventory()
         else:
             self.game.display_manager.update_display()
-        self.game.display_manager._draw_panels()  # ✅ Теперь вызываем через display_manager
+        self.game.display_manager._draw_panels()
         self.game.renderer.screen.refresh()
         self.game.display_manager._draw_panels()
         self.game.renderer.screen.refresh()
