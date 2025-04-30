@@ -3,6 +3,7 @@ import random
 import curses
 from items import Sword, Bow, IceStaff, HealthPotion, PoisonPotion, Weapon
 
+
 class CombatSystem:
     def __init__(self, game, enemy, screen):
         self.game = game
